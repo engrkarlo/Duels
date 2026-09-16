@@ -63,12 +63,14 @@ public class PlayerStateManager {
     private final Map<UUID, PlayerState> lobbyStates;
     private final Map<UUID, PlayerState> lobbyStates;
     private final Map<UUID, PlayerState> lobbyStates;
+    private final Map<UUID, PlayerState> lobbyStates;
     private final Set<UUID> spectatingPlayers;
     private File backupFile;
 
     public PlayerStateManager(UltimateDuels plugin) {
         this.plugin = plugin;
         this.savedStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
         this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
         this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
         this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
