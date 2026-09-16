@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'com.gradleup.shadow' version '9.1.0'
 }
 
 group = 'com.ultimateduels'
@@ -20,7 +19,36 @@ repositories {
     maven { url = uri('https://mvn.intellectualsites.com/content/repositories/snapshots/') }
 }
 
+def baseJar = file('vendor/UltimateDuels-7.2.0.jar')
+if (!baseJar.exists()) {
+    throw new GradleException('Missing vendor/UltimateDuels-7.2.0.jar. Upload the original 7.2.0 JAR to vendor/ before building.')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = []
+            srcFiles(
+                'com/ultimateduels/UltimateDuels.java',
+                'com/ultimateduels/listeners/BlockProtectionListener.java',
+                'com/ultimateduels/listeners/CommandBlockListener.java',
+                'com/ultimateduels/listeners/ListenerManager.java',
+                'com/ultimateduels/listeners/LobbyListener.java',
+                'com/ultimateduels/listeners/WorldChangeListener.java',
+                'com/ultimateduels/visuals/HealthPacketSender.java',
+                'com/ultimateduels/player/PlayerStateManager.java',
+                'com/ultimateduels/lobby/LobbyManager.java',
+                'com/ultimateduels/commands/LobbyCommand.java',
+                'com/ultimateduels/ffa/FFAManager.java'
+            )
+        }
+        resources.srcDirs = []
+    }
+}
+
 dependencies {
+    // The original JAR supplies the plugin's bundled libraries and all unchanged classes.
+    compileOnly files(baseJar)
     compileOnly 'io.papermc.paper:paper-api:26.2.build.123-stable'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
@@ -28,32 +56,6 @@ dependencies {
     compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.9.2'
     compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.9.2'
     compileOnly 'org.jetbrains:annotations:24.1.0'
-
-    implementation 'com.mysql:mysql-connector-j:9.2.0'
-    implementation 'com.zaxxer:HikariCP:5.1.0'
-    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
-    implementation 'com.google.code.gson:gson:2.10.1'
-    implementation 'net.kyori:adventure-text-serializer-gson:4.17.0'
-    implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
-}
-
-sourceSets {
-    main {
-        java {
-            srcDirs = ['.']
-            exclude 'build/**', '.gradle/**', 'src/**'
-            // Bundled libraries were already shaded in the original JAR.
-            // The Gradle build supplies them as dependencies and relocates them.
-            exclude 'com/ultimateduels/libs/**'
-            exclude 'com/mysql/**'
-            exclude 'com/google/protobuf/**'
-            exclude 'net/**'
-            exclude 'org/**'
-        }
-        resources {
-            srcDirs = ['src/main/resources']
-        }
-    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -62,30 +64,32 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add('-parameters')
 }
 
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+// The original JAR is the runtime base. Gradle only recompiles the changed classes,
+// then overlays those class files on top of the original archive.
+tasks.register('preparePatchJar', Exec) {
+    commandLine 'python3', 'scripts/prepare_patch_jar.py'
 }
 
-shadowJar {
+tasks.named('compileJava') {
+    dependsOn tasks.named('preparePatchJar')
+}
+
+tasks.register('overlayJar', Jar) {
+    dependsOn tasks.named('compileJava')
     archiveBaseName.set('UltimateDuels')
     archiveVersion.set('7.2.0-26.2-Fixes')
     archiveClassifier.set('')
-    mergeServiceFiles()
+    destinationDirectory.set(layout.buildDirectory.dir('libs'))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    relocate 'com.zaxxer.hikari', 'com.ultimateduels.libs.hikari'
-    relocate 'org.xerial', 'com.ultimateduels.libs.sqlite'
-    relocate 'net.kyori.adventure.text.serializer.gson', 'com.ultimateduels.libs.adventure.gson'
-    relocate 'net.kyori.adventure.text.serializer.plain', 'com.ultimateduels.libs.adventure.plain'
+    from(layout.buildDirectory.dir('base'))
+    from(sourceSets.main.output)
 }
 
-tasks.build {
-    dependsOn tasks.shadowJar
-}
-
-tasks.jar {
+tasks.named('jar') {
     enabled = false
 }
 
-tasks.named('shadowJar') {
-    dependsOn tasks.processResources
+tasks.named('build') {
+    dependsOn tasks.named('overlayJar')
 }
