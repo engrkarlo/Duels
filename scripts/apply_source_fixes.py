@@ -47,6 +47,23 @@ def health(t):
     return t
 edit('com/ultimateduels/visuals/HealthPacketSender.java',health)
 
+def alias(t):
+    old='''            if (executor instanceof TabCompleter) {
+                TabCompleter tabCompleter = (TabCompleter)executor;
+                command.setTabCompleter(tabCompleter);
+            }
+'''
+    new='''            if (executor instanceof TabCompleter) {
+                TabCompleter tabCompleter = (TabCompleter)executor;
+                command.setTabCompleter(tabCompleter);
+            }
+            if ("lobby".equalsIgnoreCase(name)) {
+                command.setAliases(java.util.Collections.singletonList("ds"));
+            }
+'''
+    return t.replace(old,new,1)
+edit('com/ultimateduels/UltimateDuels.java',alias)
+
 listener=ROOT/'com/ultimateduels/listeners/CommandBlockListener.java'
 if not listener.exists():
     listener.write_text('''package com.ultimateduels.listeners;
@@ -64,7 +81,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 /** Blocks configured root commands in configured worlds, including commands owned by other plugins. */
-public final class CommandBlockListener implements Listener {
+public final class CommandBlockListener {
     private final UltimateDuels plugin;
     public CommandBlockListener(UltimateDuels plugin) { this.plugin = plugin; }
 
