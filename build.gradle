@@ -1,0 +1,83 @@
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '8.3.6'
+}
+
+group = 'com.ultimateduels'
+version = '7.2.0-26.2-Fixes'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url = uri('https://repo.papermc.io/repository/maven-public/') }
+    maven { url = uri('https://repo.extendedclip.com/content/repositories/placeholderapi/') }
+    maven { url = uri('https://maven.enginehub.org/repo/') }
+    maven { url = uri('https://mvn.intellectualsites.com/content/repositories/snapshots/') }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.123'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
+    compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.9.2'
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.9.2'
+    compileOnly 'org.jetbrains:annotations:24.1.0'
+
+    implementation 'com.mysql:mysql-connector-j:9.2.0'
+    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'net.kyori:adventure-text-serializer-gson:4.17.0'
+    implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['.']
+            exclude 'build/**', '.gradle/**', 'src/**'
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+    options.compilerArgs.add('-parameters')
+}
+
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+shadowJar {
+    archiveBaseName.set('UltimateDuels')
+    archiveVersion.set('7.2.0-26.2-Fixes')
+    archiveClassifier.set('')
+    mergeServiceFiles()
+
+    relocate 'com.zaxxer.hikari', 'com.ultimateduels.libs.hikari'
+    relocate 'org.xerial', 'com.ultimateduels.libs.sqlite'
+    relocate 'net.kyori.adventure.text.serializer.gson', 'com.ultimateduels.libs.adventure.gson'
+    relocate 'net.kyori.adventure.text.serializer.plain', 'com.ultimateduels.libs.adventure.plain'
+}
+
+tasks.build {
+    dependsOn tasks.shadowJar
+}
+
+tasks.jar {
+    enabled = false
+}
+
+tasks.named('shadowJar') {
+    dependsOn tasks.processResources
+}
