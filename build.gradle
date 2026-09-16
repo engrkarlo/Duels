@@ -27,8 +27,8 @@ if (!baseJar.exists()) {
 sourceSets {
     main {
         java {
-            srcDirs = []
-            srcFiles(
+            setSrcDirs([])
+            source(
                 'com/ultimateduels/UltimateDuels.java',
                 'com/ultimateduels/listeners/BlockProtectionListener.java',
                 'com/ultimateduels/listeners/CommandBlockListener.java',
@@ -42,12 +42,11 @@ sourceSets {
                 'com/ultimateduels/ffa/FFAManager.java'
             )
         }
-        resources.srcDirs = []
+        resources.setSrcDirs([])
     }
 }
 
 dependencies {
-    // The original JAR supplies the plugin's bundled libraries and all unchanged classes.
     compileOnly files(baseJar)
     compileOnly 'io.papermc.paper:paper-api:26.2.build.123-stable'
     compileOnly 'me.clip:placeholderapi:2.11.6'
@@ -64,8 +63,6 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add('-parameters')
 }
 
-// The original JAR is the runtime base. Gradle only recompiles the changed classes,
-// then overlays those class files on top of the original archive.
 tasks.register('preparePatchJar', Exec) {
     commandLine 'python3', 'scripts/prepare_patch_jar.py'
 }
@@ -81,7 +78,6 @@ tasks.register('overlayJar', Jar) {
     archiveClassifier.set('')
     destinationDirectory.set(layout.buildDirectory.dir('libs'))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
     from(layout.buildDirectory.dir('base'))
     from(sourceSets.main.output)
 }
