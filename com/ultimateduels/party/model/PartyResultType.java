@@ -1,0 +1,33 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package com.ultimateduels.party.model;
+
+public enum PartyResultType {
+    SUCCESS,
+    DISABLED,
+    ALREADY_IN_PARTY,
+    NOT_IN_PARTY,
+    NOT_LEADER,
+    PARTY_FULL,
+    TARGET_IN_PARTY,
+    NOT_IN_YOUR_PARTY,
+    ALREADY_INVITED,
+    NO_INVITE,
+    INVITE_EXPIRED,
+    PARTY_DISBANDED,
+    CANNOT_INVITE_SELF,
+    CANNOT_KICK_SELF,
+    ALREADY_LEADER,
+    INTERNAL_ERROR,
+    PARTY_TOO_SMALL,
+    KIT_NOT_FOUND,
+    MEMBER_OFFLINE,
+    MEMBER_BUSY,
+    SYSTEM_DISABLED,
+    NO_ARENA,
+    NOT_PUBLIC,
+    FAILED;
+
+}
+

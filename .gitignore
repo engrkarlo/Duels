@@ -1,0 +1,51 @@
+# Build output
+target/
+build/
+out/
+*.class
+*.jar
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+
+# Maven
+.mvn/
+
+# Runtime/server data
+plugins/
+logs/
+world/
+world_nether/
+world_the_end/
+
+# Databases / local data
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.db-journal
+
+# Secrets / credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.*
+secrets.*
+secret.*
+config-local.yml
+config.local.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Decompiled tool output
+summary.txt
