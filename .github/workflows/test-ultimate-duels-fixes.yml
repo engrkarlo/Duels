@@ -20,6 +20,9 @@ jobs:
       - name: Apply source fixes
         run: python3 -u scripts/apply_source_fixes.py
 
+      - name: Repair CFR output
+        run: python3 -u scripts/repair_decompiler_output.py
+
       - name: Validate required fixes
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
@@ -28,6 +31,8 @@ jobs:
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
           grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
           grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
+          ! grep -q '\*\* GOTO' com/ultimateduels/database/DatabaseManager.java
+          ! grep -q 'catch (Throwable throwable)' com/ultimateduels/database/DatabaseManager.java || true
           echo 'Required source fixes are present.'
 
       - name: Set up JDK 25
@@ -62,7 +67,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Commit any source changes made by the fix script
+      - name: Commit source repairs made by the build scripts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -71,5 +76,5 @@ jobs:
             echo "No source changes were needed."
             exit 0
           fi
-          git commit -m "Apply Paper 26.2 UltimateDuels fixes [skip ci]"
+          git commit -m "Repair CFR output for Paper 26.2 build [skip ci]"
           git push origin HEAD:fix/ultimate-duels-7.2.0-paper-26.2
