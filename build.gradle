@@ -42,8 +42,11 @@ sourceSets {
         java {
             srcDirs = ['.']
             exclude 'build/**', '.gradle/**', 'src/**'
+            // Bundled libraries were already shaded in the original JAR.
+            // The Gradle build supplies them as dependencies and relocates them.
             exclude 'com/ultimateduels/libs/**'
             exclude 'com/mysql/**'
+            exclude 'com/google/protobuf/**'
             exclude 'net/**'
             exclude 'org/**'
         }
