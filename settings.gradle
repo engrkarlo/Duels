@@ -1,0 +1,19 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+        maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
+        maven { url = uri("https://maven.enginehub.org/repo/") }
+        maven { url = uri("https://mvn.intellectualsites.com/content/repositories/snapshots/") }
+    }
+}
+
+rootProject.name = "UltimateDuels"
