@@ -101,6 +101,9 @@ public class FFAManager {
     private int healOnKillAmount;
     private boolean rekitOnKill;
     private boolean deathItemsDrop;
+    private String combatLogMessage;
+    private String combatLogDisplay;
+    private BukkitTask combatMessageTask;
     private boolean clearEffectsOnKill;
     private boolean playKillSound;
     private boolean giveGoldenAppleOnKill;
@@ -126,6 +129,7 @@ public class FFAManager {
         this.loadSettings();
         this.initializeFFAArenas();
         this.startCleanupTask();
+        this.startCombatMessageTask();
         this.startRegenerationTask();
         plugin.getLogger().info("[FFAManager] Initialized with " + this.ffaArenas.size() + " FFA arenas");
     }
@@ -146,6 +150,8 @@ public class FFAManager {
         this.healOnKillAmount = config.getInt("ffa.kill-rewards.heal-amount", -1);
         this.rekitOnKill = config.getBoolean("ffa.kill-rewards.rekit-on-kill", true);
         this.deathItemsDrop = config.getBoolean("ffa.death-items-drop", false);
+        this.combatLogMessage = config.getString("combat-log.message", "&cYou are in combat for &e{time}s&c!");
+        this.combatLogDisplay = config.getString("combat-log.display", "action-bar").toLowerCase();
         this.clearEffectsOnKill = config.getBoolean("ffa.kill-rewards.clear-effects-on-kill", true);
         this.playKillSound = config.getBoolean("ffa.kill-rewards.play-sound", true);
         this.giveGoldenAppleOnKill = config.getBoolean("ffa.kill-rewards.give-golden-apple", false);
@@ -265,6 +271,31 @@ public class FFAManager {
             this.cleanupOfflinePlayers();
             this.cleanupExpiredCombatTags();
         }, 600L, 600L);
+    }
+
+    private void startCombatMessageTask() {
+        this.combatMessageTask = Bukkit.getScheduler().runTaskTimer((Plugin)this.plugin, this::updateCombatMessages, 20L, 20L);
+    }
+
+    private void updateCombatMessages() {
+        if (this.combatTracking.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        long expiry = (long)this.combatTagSeconds * 1000L;
+        for (Map.Entry<UUID, CombatData> entry : this.combatTracking.entrySet()) {
+            CombatData data = entry.getValue();
+            long remainingMs = expiry - (now - data.lastDamageTime);
+            if (remainingMs <= 0L) continue;
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null || !player.isOnline() || !this.isInFFA(entry.getKey())) continue;
+            int seconds = (int)Math.ceil(remainingMs / 1000.0);
+            this.sendCombatMessage(player, seconds);
+        }
+    }
+
+    private void sendCombatMessage(Player player, int seconds) {
+        String message = this.combatLogMessage.replace("{time}", String.valueOf(seconds)).replace("{seconds}", String.valueOf(seconds)).replace("{player}", player.getName());
+        if ("chat".equals(this.combatLogDisplay) || "both".equals(this.combatLogDisplay)) MessageUtils.sendMessage(player, message);
+        if (!"chat".equals(this.combatLogDisplay) && !"none".equals(this.combatLogDisplay)) MessageUtils.sendActionBar(player, message);
     }
 
     private void startRegenerationTask() {
@@ -850,6 +881,8 @@ public class FFAManager {
         CombatData combatData = this.combatTracking.computeIfAbsent(victim.getUniqueId(), k -> new CombatData(victim.getUniqueId()));
         combatData.setLastAttacker(attacker.getUniqueId());
         combatData.setLastDamageTime(System.currentTimeMillis());
+        this.sendCombatMessage(victim, this.combatTagSeconds);
+        this.sendCombatMessage(attacker, this.combatTagSeconds);
         this.removeSpawnProtection(victim);
         this.removeSpawnProtection(attacker);
         HealthDisplayManager healthDisplayManager = this.plugin.getHealthDisplayManager();
@@ -1094,6 +1127,7 @@ public class FFAManager {
         if (this.cleanupTask != null) {
             this.cleanupTask.cancel();
         }
+        if (this.combatMessageTask != null) this.combatMessageTask.cancel();
         if (this.regenerationTask != null) {
             this.regenerationTask.cancel();
         }

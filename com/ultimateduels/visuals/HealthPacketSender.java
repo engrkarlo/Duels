@@ -133,7 +133,7 @@ public final class HealthPacketSender {
         Class<?> clazz = Class.forName("net.minecraft.world.phys.Vec3");
         vec3Zero = getStaticField(clazz, "ZERO");
         entityTypeClass = Class.forName("net.minecraft.world.entity.EntityType");
-        entityTypeTextDisplay = getStaticField(entityTypeClass, "TEXT_DISPLAY");
+        entityTypeTextDisplay = getTextDisplayEntityType(entityTypeClass);
         Class<?> addEntityPacketClass = Class.forName("net.minecraft.network.protocol.game.ClientboundAddEntityPacket");
         ctorSpawnPacket = addEntityPacketClass.getDeclaredConstructor(Integer.TYPE, UUID.class, Double.TYPE, Double.TYPE, Double.TYPE, Float.TYPE, Float.TYPE, entityTypeClass, Integer.TYPE, clazz, Double.TYPE);
         ctorSpawnPacket.setAccessible(true);
@@ -327,6 +327,20 @@ public final class HealthPacketSender {
         catch (ClassNotFoundException classNotFoundException) {
             String serverPkg = Bukkit.getServer().getClass().getPackage().getName();
             return serverPkg.replace(".CraftServer", "").replace("CraftServer", "org.bukkit.craftbukkit");
+        }
+    }
+
+    private static Object getTextDisplayEntityType(Class<?> type) throws Exception {
+        try {
+            return getStaticField(type, "TEXT_DISPLAY");
+        } catch (NoSuchFieldException ignored) {
+            Method byString = type.getMethod("byString", String.class);
+            Object result = byString.invoke(null, "minecraft:text_display");
+            if (result instanceof java.util.Optional) {
+                java.util.Optional<?> optional = (java.util.Optional<?>) result;
+                if (optional.isPresent()) return optional.get();
+            }
+            throw new NoSuchFieldException("Could not resolve minecraft:text_display from EntityType registry");
         }
     }
 

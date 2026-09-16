@@ -125,7 +125,7 @@ TabCompleter {
             this.plugin.getFFAManager().leave(player);
         }
         if (this.plugin.getLobbyManager() != null) {
-            this.plugin.getLobbyManager().sendToLobby(player, true, true);
+            this.plugin.getLobbyManager().sendToLobby(player, true, false);
             MessageUtils.sendMessage(player, "&aYou have been teleported to the lobby.");
         } else {
             MessageUtils.sendMessage(player, "&cLobby system is not available!");

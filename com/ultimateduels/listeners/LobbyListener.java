@@ -318,9 +318,14 @@ implements Listener {
         if (this.plugin.getFFAManager() != null && this.plugin.getFFAManager().isInFFAArena(player)) {
             return;
         }
-        if (this.lobbyManager.isInLobbyWorld(player) && !this.lobbyManager.isInLobby(player)) {
+        boolean pluginAllowed = this.plugin.getWorldRestrictionManager() == null
+                || this.plugin.getWorldRestrictionManager().isPluginAllowedInWorld(player.getWorld());
+        if (this.lobbyManager.isInLobbyWorld(player) && pluginAllowed && !this.lobbyManager.isInLobby(player)) {
             this.lobbyManager.sendToLobby(player, false);
         } else if (!this.lobbyManager.isInLobbyWorld(player) && this.lobbyManager.isInLobby(player)) {
+            if (this.plugin.getPlayerStateManager() != null && this.plugin.getPlayerStateManager().hasLobbyState(player.getUniqueId())) {
+                this.plugin.getPlayerStateManager().restoreLobbyState(player);
+            }
             this.lobbyManager.removeFromLobby(player);
         }
     }

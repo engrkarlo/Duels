@@ -61,10 +61,15 @@ implements Listener {
             this.handlePostMatchLobbyReturn(player, toWorld);
             return;
         }
-        if (!wasInDuelLobby && isInDuelLobby) {
+        boolean pluginAllowed = this.plugin.getWorldRestrictionManager() == null
+                || this.plugin.getWorldRestrictionManager().isPluginAllowedInWorld(player.getWorld());
+        if (!wasInDuelLobby && isInDuelLobby && pluginAllowed) {
             this.handleEnterDuelLobby(player, toWorld);
         }
         if (wasInDuelLobby && !isInDuelLobby) {
+            if (this.plugin.getPlayerStateManager() != null && this.plugin.getPlayerStateManager().hasLobbyState(uuid)) {
+                this.plugin.getPlayerStateManager().restoreLobbyState(player);
+            }
             this.handleLeaveDuelLobby(player, fromWorld);
         }
     }
