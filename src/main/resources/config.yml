@@ -1,0 +1,147 @@
+general:
+  debug-mode: false
+  server-name: UltimateDuels
+  website: play.ultimateduels.com
+  prefix: '&8[&6UltimateDuels&8] '
+database:
+  type: SQLITE
+  host: localhost
+  port: 3306
+  database: ultimateduels
+  username: root
+  password: ''
+  table-prefix: ud_
+  ssl: false
+  pool-size: 10
+  connection-timeout: 30000
+  max-lifetime: 1800000
+  auto-reconnect: true
+lobby:
+  enabled: true
+  world-name: lobby
+  separate-world: false
+  void-teleport: true
+  void-level: 0
+  clear-inventory: true
+  heal-on-join: true
+  clear-effects: true
+  prevent-damage: true
+  prevent-hunger: true
+  prevent-build: true
+  prevent-weather: true
+  give-lobby-items: true
+  lobby-gamemode: ADVENTURE
+  hotbar-items:
+    queue-menu-slot: 0
+    party-menu-slot: 1
+    kit-editor-slot: 2
+    ffa-menu-slot: 3
+    settings-slot: 8
+duels:
+  request-timeout: 60
+  countdown-seconds: 3
+  post-match-delay: 3
+  max-rounds: 20
+  default-rounds: 1
+  allow-spectators: true
+  max-spectators-per-match: 50
+  broadcast-results: true
+  drop-items-on-death: false
+  keep-inventory: false
+  allow-pearl-damage: false
+  allow-self-damage: true
+  regen-arena-after-match: true
+  teleport-on-void: true
+  void-death-level: 0
+  arena-border-size: 100
+  prevent-escape: true
+  escape-distance: 50.0
+  escape-countdown: 10
+  instant-respawn: true
+queue:
+  enabled: true
+  match-interval-ticks: 20
+  max-queue-time: 300
+  allow-cancel: true
+  notify-on-join: true
+  notify-on-match: true
+  ping-based-matching: false
+  max-ping-difference: 100
+  elo-based-matching: false
+  elo-range-initial: 100
+  elo-range-expansion: 50
+  elo-range-max: 500
+  elo-expansion-interval: 30
+ffa:
+  enabled: true
+  respawn-delay-ticks: 60
+  spawn-protection-ticks: 60
+  spawn-protection-indicator: true
+  regen-on-kill: true
+  regen-health-amount: 4.0
+  refill-on-kill: false
+  show-kill-messages: true
+  show-killstreak-messages: true
+  killstreak-announce-interval: 5
+  max-players-per-arena: 50
+  regen-arena-on-restart: true
+  allow-spectators: false
+  combat-tag-seconds: 15
+  allow-block-break: false
+  allow-block-place: false
+  death-items-drop: false
+party:
+  enabled: true
+  max-size: 10
+  invite-timeout: 60
+  friendly-fire: false
+  party-chat-enabled: true
+  party-chat-format: '&7[&bParty&7] &f{player}&7: &7{message}'
+  allow-split-duels: true
+  allow-party-vs-party: true
+  leader-only-queue: true
+  disband-on-leader-leave: false
+combat:
+  knockback-horizontal: 0.4
+  knockback-vertical: 0.4
+  sprint-knockback-multiplier: 1.0
+  old-pvp-mechanics: false
+  attack-cooldown: 0.5
+  sweep-attack: true
+  shield-mechanics: true
+  projectile-damage-multiplier: 1.0
+  fire-aspect-enabled: true
+  thorns-enabled: true
+  critical-hit-multiplier: 1.5
+  totem-of-undying-works: false
+  max-combo-hits: 0
+  hit-delay-ticks: 10
+scoreboard:
+  enabled: true
+  update-interval-ticks: 20
+sound:
+  enabled: true
+command-blocking:
+  enabled: false
+  worlds:
+    - lobby
+  commands:
+    - pl
+    - plugins
+    - bukkit:plugins
+    - version
+    - ver
+    - help
+    - spawn
+    - home
+    - homes
+    - fly
+    - tpa
+    - tpaccept
+    - tpadeny
+    - tp
+    - pwarp
+  message: '&cYou cannot use that command in this world.'
+combat-log:
+  message: '&cYou are in combat for &e{time}s&c!'
+  display: action-bar
