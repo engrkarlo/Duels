@@ -18,6 +18,8 @@ def player_state(text):
     text = re.sub(r'(    private final Map<UUID, PlayerState> lobbyStates;\n)(?:\1)+', r'\1', text)
     text = re.sub(r'(        this\.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>\(\);\n)(?:\1)+', r'\1', text)
     text = text.replace('Attribute.GENERIC_MAX_HEALTH', 'Attribute.MAX_HEALTH')
+    # CFR loses generic information when decompiling ObjectInputStream results.
+    text = text.replace('Map serializedStates = (Map)ois.readObject();', 'Map<?, ?> serializedStates = (Map<?, ?>) ois.readObject();')
     text = text.replace('for (Map.Entry entry : serializedStates.entrySet()) {', 'for (Map.Entry<?, ?> entry : serializedStates.entrySet()) {')
     return text
 
@@ -31,6 +33,8 @@ def lobby(text):
 def ffa(text):
     text = text.replace('ex.getMessage()', 'String.valueOf(ex)')
     text = text.replace('throwable.getMessage()', 'String.valueOf(throwable)')
+    # CFR can infer rewardsList as ArrayList<Object>; normalize to CharSequence values.
+    text = text.replace('message.append(String.join((CharSequence)" \\u00a77| ", rewardsList));', 'message.append(String.join(" \\u00a77| ", rewardsList.stream().map(String::valueOf).toList()));')
     text = re.sub(r'message\.append\(String\.join\((?:CharSequence)?\s*"([^\"]*)", rewardsList\)\);', r'message.append(String.join("\1", rewardsList.stream().map(String::valueOf).toList()));', text)
     return text
 
