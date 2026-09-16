@@ -27,20 +27,18 @@ if (!baseJar.exists()) {
 sourceSets {
     main {
         java {
-            setSrcDirs([])
-            source(
-                'com/ultimateduels/UltimateDuels.java',
-                'com/ultimateduels/listeners/BlockProtectionListener.java',
-                'com/ultimateduels/listeners/CommandBlockListener.java',
-                'com/ultimateduels/listeners/ListenerManager.java',
-                'com/ultimateduels/listeners/LobbyListener.java',
-                'com/ultimateduels/listeners/WorldChangeListener.java',
-                'com/ultimateduels/visuals/HealthPacketSender.java',
-                'com/ultimateduels/player/PlayerStateManager.java',
-                'com/ultimateduels/lobby/LobbyManager.java',
-                'com/ultimateduels/commands/LobbyCommand.java',
-                'com/ultimateduels/ffa/FFAManager.java'
-            )
+            srcDirs = ['.']
+            include 'com/ultimateduels/UltimateDuels.java'
+            include 'com/ultimateduels/listeners/BlockProtectionListener.java'
+            include 'com/ultimateduels/listeners/CommandBlockListener.java'
+            include 'com/ultimateduels/listeners/ListenerManager.java'
+            include 'com/ultimateduels/listeners/LobbyListener.java'
+            include 'com/ultimateduels/listeners/WorldChangeListener.java'
+            include 'com/ultimateduels/visuals/HealthPacketSender.java'
+            include 'com/ultimateduels/player/PlayerStateManager.java'
+            include 'com/ultimateduels/lobby/LobbyManager.java'
+            include 'com/ultimateduels/commands/LobbyCommand.java'
+            include 'com/ultimateduels/ffa/FFAManager.java'
         }
         resources.setSrcDirs([])
     }
