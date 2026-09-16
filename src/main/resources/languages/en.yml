@@ -1,0 +1,8 @@
+language:
+  code: en
+  name: English
+messages:
+  prefix: '&8[&6UltimateDuels&8] '
+  no-permission: '&cYou do not have permission to do that.'
+  player-not-found: '&cPlayer not found.'
+  unknown-command: '&cUnknown command.'
