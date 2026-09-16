@@ -22,7 +22,20 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check pyyaml
 
       - name: Apply source fixes
-        run: python3 -u scripts/apply_26_2_fixes.py
+        run: |
+          set +e
+          python3 -u scripts/apply_26_2_fixes.py > apply-output.txt 2>&1
+          status=$?
+          cat apply-output.txt
+          if [ "$status" -ne 0 ]; then
+            cp apply-output.txt CI_FAILURE.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add CI_FAILURE.txt
+            git commit -m "Record fix CI failure [skip ci]"
+            git push origin HEAD:fix/ultimate-duels-7.2.0-paper-26.2
+            exit "$status"
+          fi
 
       - name: Validate YAML
         run: |
