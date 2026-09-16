@@ -131,9 +131,9 @@ public final class HealthPacketSender {
         }
         sendMethod.setAccessible(true);
         Class<?> clazz = Class.forName("net.minecraft.world.phys.Vec3");
-        vec3Zero = clazz.getField("ZERO").get(null);
+        vec3Zero = getStaticField(clazz, "ZERO");
         entityTypeClass = Class.forName("net.minecraft.world.entity.EntityType");
-        entityTypeTextDisplay = entityTypeClass.getField("TEXT_DISPLAY").get(null);
+        entityTypeTextDisplay = getStaticField(entityTypeClass, "TEXT_DISPLAY");
         Class<?> addEntityPacketClass = Class.forName("net.minecraft.network.protocol.game.ClientboundAddEntityPacket");
         ctorSpawnPacket = addEntityPacketClass.getDeclaredConstructor(Integer.TYPE, UUID.class, Double.TYPE, Double.TYPE, Double.TYPE, Float.TYPE, Float.TYPE, entityTypeClass, Integer.TYPE, clazz, Double.TYPE);
         ctorSpawnPacket.setAccessible(true);
@@ -158,10 +158,10 @@ public final class HealthPacketSender {
         ctorEntityDataAccessor = entityDataAccessorClass.getDeclaredConstructor(Integer.TYPE, clazz2);
         ctorEntityDataAccessor.setAccessible(true);
         Class<?> serializersClass = Class.forName("net.minecraft.network.syncher.EntityDataSerializers");
-        serByte = serializersClass.getField("BYTE").get(null);
-        serInt = serializersClass.getField("INT").get(null);
-        serFloat = serializersClass.getField("FLOAT").get(null);
-        serComponent = serializersClass.getField("COMPONENT").get(null);
+        serByte = getStaticField(serializersClass, "BYTE");
+        serInt = getStaticField(serializersClass, "INT");
+        serFloat = getStaticField(serializersClass, "FLOAT");
+        serComponent = getStaticField(serializersClass, "COMPONENT");
         Class<?> paperAdventureClass = Class.forName("io.papermc.paper.adventure.PaperAdventure");
         paperAdventureAsVanilla = paperAdventureClass.getMethod("asVanilla", Component.class);
         paperAdventureAsVanilla.setAccessible(true);
@@ -176,7 +176,7 @@ public final class HealthPacketSender {
         fbWriteByte = friendlyByteBufClass.getMethod("writeByte", Integer.TYPE);
         fbWriteBoolean = friendlyByteBufClass.getMethod("writeBoolean", Boolean.TYPE);
         Class<?> teleportClass = Class.forName("net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket");
-        streamCodecTeleport = teleportClass.getField("STREAM_CODEC").get(null);
+        streamCodecTeleport = getStaticField(teleportClass, "STREAM_CODEC");
         for (Method method : streamCodecTeleport.getClass().getMethods()) {
             if (!method.getName().equals("decode") || method.getParameterCount() != 1) continue;
             streamCodecDecode = method;
@@ -327,6 +327,18 @@ public final class HealthPacketSender {
         catch (ClassNotFoundException classNotFoundException) {
             String serverPkg = Bukkit.getServer().getClass().getPackage().getName();
             return serverPkg.replace(".CraftServer", "").replace("CraftServer", "org.bukkit.craftbukkit");
+        }
+    }
+
+    private static Object getStaticField(Class<?> type, String name) throws Exception {
+        try {
+            Field field = type.getField(name);
+            field.setAccessible(true);
+            return field.get(null);
+        } catch (NoSuchFieldException ignored) {
+            Field field = type.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(null);
         }
     }
 

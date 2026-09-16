@@ -92,6 +92,10 @@ implements Listener {
         }
         Player killer = this.extractKiller(event);
         if (inFFA) {
+            boolean dropItems = this.ffaManager != null && this.ffaManager.shouldDropItemsOnDeath();
+            if (dropItems) {
+                return;
+            }
             event.setCancelled(true);
             Player finalKiller = killer;
             Bukkit.getScheduler().runTaskLater((Plugin)this.plugin, () -> {
@@ -241,9 +245,12 @@ implements Listener {
         if (this.ffaManager != null && this.ffaManager.isInFFAArena(victim)) {
             event.setDeathMessage(null);
             event.setDroppedExp(0);
-            event.setKeepInventory(true);
+            boolean dropItems = this.ffaManager.shouldDropItemsOnDeath();
+            event.setKeepInventory(!dropItems);
             event.setKeepLevel(true);
-            event.getDrops().clear();
+            if (!dropItems) {
+                event.getDrops().clear();
+            }
             final Player finalKiller = killer;
             new BukkitRunnable(){
 

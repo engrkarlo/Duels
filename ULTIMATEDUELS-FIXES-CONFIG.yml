@@ -1,0 +1,29 @@
+# Merge these keys into UltimateDuels/config.yml
+# FFA death item behavior
+ffa:
+  death-items-drop: false
+
+# World-specific command blocking. Commands are checked by their root label,
+# including commands registered by other plugins.
+command-blocking:
+  enabled: false
+  worlds:
+    - lobby
+  commands:
+    - pl
+    - plugins
+    - version
+    - ver
+    - help
+    - spawn
+    - home
+    - tpa
+    - tpaccept
+    - tpadeny
+    - tp
+    - pwarp
+
+# FFA combat logging message
+combat-log:
+  message: '&cYou are in combat for &e{time}s&c!'
+  display: action-bar

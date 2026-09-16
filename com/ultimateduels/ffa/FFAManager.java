@@ -100,6 +100,7 @@ public class FFAManager {
     private boolean healOnKill;
     private int healOnKillAmount;
     private boolean rekitOnKill;
+    private boolean deathItemsDrop;
     private boolean clearEffectsOnKill;
     private boolean playKillSound;
     private boolean giveGoldenAppleOnKill;
@@ -144,6 +145,7 @@ public class FFAManager {
         this.healOnKill = config.getBoolean("ffa.kill-rewards.heal-on-kill", true);
         this.healOnKillAmount = config.getInt("ffa.kill-rewards.heal-amount", -1);
         this.rekitOnKill = config.getBoolean("ffa.kill-rewards.rekit-on-kill", true);
+        this.deathItemsDrop = config.getBoolean("ffa.death-items-drop", false);
         this.clearEffectsOnKill = config.getBoolean("ffa.kill-rewards.clear-effects-on-kill", true);
         this.playKillSound = config.getBoolean("ffa.kill-rewards.play-sound", true);
         this.giveGoldenAppleOnKill = config.getBoolean("ffa.kill-rewards.give-golden-apple", false);
@@ -917,6 +919,10 @@ public class FFAManager {
     public boolean hasSpawnProtection(@Nonnull UUID uuid) {
         FFAPlayerData data = this.playerDataMap.get(uuid);
         return data != null && data.isSpawnProtected();
+    }
+
+    public boolean shouldDropItemsOnDeath() {
+        return this.deathItemsDrop;
     }
 
     public boolean isInFFA(@Nonnull UUID uuid) {

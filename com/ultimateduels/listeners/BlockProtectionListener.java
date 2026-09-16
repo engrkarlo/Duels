@@ -273,7 +273,7 @@ implements Listener {
             }
             return;
         }
-        if (!player.hasPermission("ultimateduels.admin.build")) {
+        if (this.isInLobby(player) && !player.hasPermission("ultimateduels.admin.build")) {
             event.setCancelled(true);
         }
     }
@@ -378,7 +378,7 @@ implements Listener {
             return;
         }
         Player player = (Player)entity;
-        if (!player.hasPermission("ultimateduels.admin.build")) {
+        if (this.isInLobby(player) && !player.hasPermission("ultimateduels.admin.build")) {
             event.setCancelled(true);
         }
     }
@@ -412,13 +412,10 @@ implements Listener {
     }
 
     private boolean isInLobby(Player player) {
-        UUID playerUUID = player.getUniqueId();
-        DuelManager duelManager = this.plugin.getDuelManager();
-        FFAManager ffaManager = this.plugin.getFFAManager();
-        if (duelManager == null || ffaManager == null) {
-            return true;
+        if (player == null || this.plugin.getLobbyManager() == null) {
+            return false;
         }
-        return !duelManager.isInMatch(playerUUID) && !ffaManager.isInFFA(playerUUID) && !duelManager.isSpectating(playerUUID);
+        return this.plugin.getLobbyManager().isInLobbyWorld(player);
     }
 
     private boolean isInteractable(Material material) {
