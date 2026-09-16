@@ -18,13 +18,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install YAML parser
+        run: python3 -m pip install --disable-pip-version-check pyyaml
+
       - name: Apply source fixes
-        run: python3 scripts/apply_26_2_fixes.py
+        run: python3 -u scripts/apply_26_2_fixes.py
 
       - name: Validate YAML
         run: |
           python3 - <<'PY'
-          import pathlib
           import yaml
           for name in ['config.yml', 'plugin.yml']:
               with open(name, encoding='utf-8') as f:
