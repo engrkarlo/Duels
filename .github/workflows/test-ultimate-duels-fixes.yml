@@ -27,12 +27,11 @@ jobs:
           grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
           grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
-          grep -q 'death-items-drop' com/ultimateduels/ffa/FFAManager.java || true
           grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
           echo 'Required source fixes are present.'
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
@@ -40,7 +39,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.14.3'
+          gradle-version: '9.1.0'
 
       - name: Compile and package shaded plugin
         run: gradle clean shadowJar --no-daemon --stacktrace
