@@ -30,6 +30,7 @@ dependencies {
     compileOnly 'org.jetbrains:annotations:24.1.0'
 
     implementation 'com.mysql:mysql-connector-j:9.2.0'
+    implementation 'com.zaxxer:HikariCP:5.1.0'
     implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'net.kyori:adventure-text-serializer-gson:4.17.0'
@@ -41,6 +42,12 @@ sourceSets {
         java {
             srcDirs = ['.']
             exclude 'build/**', '.gradle/**', 'src/**'
+            // These packages were already shaded in the original JAR. The Gradle
+            // build supplies the same libraries and relocates them at packaging time.
+            exclude 'com/ultimateduels/libs/**'
+            exclude 'com/mysql/**'
+            exclude 'net/**'
+            exclude 'org/**'
         }
         resources {
             srcDirs = ['src/main/resources']
