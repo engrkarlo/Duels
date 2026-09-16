@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:26.2.build.123'
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.123-stable'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
     compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
@@ -42,8 +42,6 @@ sourceSets {
         java {
             srcDirs = ['.']
             exclude 'build/**', '.gradle/**', 'src/**'
-            // These packages were already shaded in the original JAR. The Gradle
-            // build supplies the same libraries and relocates them at packaging time.
             exclude 'com/ultimateduels/libs/**'
             exclude 'com/mysql/**'
             exclude 'net/**'
