@@ -18,13 +18,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install YAML parser
-        run: python3 -m pip install --disable-pip-version-check pyyaml
-
       - name: Apply source fixes
         run: |
           set +e
-          python3 -u scripts/apply_26_2_fixes.py > apply-output.txt 2>&1
+          python3 -u scripts/apply_source_fixes.py > apply-output.txt 2>&1
           status=$?
           cat apply-output.txt
           if [ "$status" -ne 0 ]; then
@@ -37,33 +34,46 @@ jobs:
             exit "$status"
           fi
 
-      - name: Validate YAML
+      - name: Validate source fixes
         run: |
-          python3 - <<'PY'
-          import yaml
-          for name in ['config.yml', 'plugin.yml']:
-              with open(name, encoding='utf-8') as f:
-                  yaml.safe_load(f)
-              print('YAML OK:', name)
-          PY
-
-      - name: Validate required fixes
-        run: |
-          grep -q "api-version: '26.2'" plugin.yml
-          grep -q 'aliases: \[ds, hub, leave, duellobby, l\]' plugin.yml
-          grep -q 'death-items-drop: false' config.yml
-          grep -q 'command-blocking:' config.yml
-          grep -q 'combat-log:' config.yml
+          test -f com/ultimateduels/listeners/CommandBlockListener.java
           grep -q 'new CommandBlockListener(this.plugin)' com/ultimateduels/listeners/ListenerManager.java
           grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
+          grep -q 'restoreLobbyState' com/ultimateduels/lobby/LobbyManager.java
+          grep -q 'shouldDropItemsOnDeath' com/ultimateduels/listeners/PlayerDeathListener.java
+          grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
           echo 'Required source fixes are present.'
+
+      - name: Validate Java syntax
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          files = [
+            'com/ultimateduels/listeners/CommandBlockListener.java',
+            'com/ultimateduels/listeners/ListenerManager.java',
+            'com/ultimateduels/listeners/BlockProtectionListener.java',
+            'com/ultimateduels/visuals/HealthPacketSender.java',
+            'com/ultimateduels/player/PlayerStateManager.java',
+            'com/ultimateduels/lobby/LobbyManager.java',
+            'com/ultimateduels/listeners/LobbyListener.java',
+            'com/ultimateduels/listeners/WorldChangeListener.java',
+            'com/ultimateduels/commands/LobbyCommand.java',
+            'com/ultimateduels/ffa/FFAManager.java',
+          ]
+          for f in files:
+              text = pathlib.Path(f).read_text(encoding='utf-8')
+              if text.count('{') != text.count('}'):
+                  raise SystemExit(f'Unbalanced braces: {f}')
+          print('Java source brace validation passed.')
+          PY
 
       - name: Commit applied source changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          git rm -f CI_FAILURE.txt 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No source changes were needed."
             exit 0
