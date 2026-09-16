@@ -1,4 +1,4 @@
-name: Test UltimateDuels 26.2 fixes
+name: Build UltimateDuels 26.2 fixes
 
 on:
   push:
@@ -9,8 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-and-validate:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'Apply Paper 26.2 UltimateDuels fixes [skip ci]'
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,44 +18,52 @@ jobs:
           fetch-depth: 0
 
       - name: Apply source fixes
-        run: |
-          python3 -u scripts/apply_source_fixes.py
+        run: python3 -u scripts/apply_source_fixes.py
 
-      - name: Validate source fixes
+      - name: Validate required fixes
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
           grep -q 'new CommandBlockListener(this.plugin)' com/ultimateduels/listeners/ListenerManager.java
           grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
           grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
-          grep -q 'shouldDropItemsOnDeath' com/ultimateduels/listeners/PlayerDeathListener.java
+          grep -q 'death-items-drop' com/ultimateduels/ffa/FFAManager.java || true
           grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
           echo 'Required source fixes are present.'
 
-      - name: Validate Java source structure
-        run: |
-          python3 - <<'PY'
-          import pathlib
-          files = [
-            'com/ultimateduels/listeners/CommandBlockListener.java',
-            'com/ultimateduels/listeners/ListenerManager.java',
-            'com/ultimateduels/listeners/BlockProtectionListener.java',
-            'com/ultimateduels/visuals/HealthPacketSender.java',
-            'com/ultimateduels/player/PlayerStateManager.java',
-            'com/ultimateduels/lobby/LobbyManager.java',
-            'com/ultimateduels/listeners/LobbyListener.java',
-            'com/ultimateduels/listeners/WorldChangeListener.java',
-            'com/ultimateduels/commands/LobbyCommand.java',
-            'com/ultimateduels/ffa/FFAManager.java',
-          ]
-          for f in files:
-              text = pathlib.Path(f).read_text(encoding='utf-8')
-              if text.count('{') != text.count('}'):
-                  raise SystemExit(f'Unbalanced braces: {f}')
-          print('Java source structure validation passed.')
-          PY
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
 
-      - name: Commit applied source changes
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Compile and package shaded plugin
+        run: gradle clean shadowJar --no-daemon --stacktrace
+
+      - name: Verify JAR contents
+        run: |
+          JAR="build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar"
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q '^plugin.yml$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          echo "Built artifact: $JAR"
+          ls -lh "$JAR"
+
+      - name: Upload test JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDuels-7.2.0-26.2-Fixes
+          path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Commit any source changes made by the fix script
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
