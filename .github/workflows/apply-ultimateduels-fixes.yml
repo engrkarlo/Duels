@@ -15,18 +15,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Apply source fixes
         run: python3 scripts/apply_ultimateduels_fixes.py
 
       - name: Commit fixes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add com/ultimateduels ULTIMATEDUELS-FIXES-CONFIG.yml
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
           git commit -m "Apply UltimateDuels fixes [skip ci]"
-          git push
+          git push origin HEAD:main
