@@ -34,6 +34,9 @@ jobs:
       - name: Apply follow-up runtime fixes
         run: python3 -u scripts/apply_followup_fixes_v2.py
 
+      - name: Apply final command and match cleanup fixes
+        run: python3 -u scripts/apply_match_command_item_fixes_v3.py
+
       - name: Validate patch sources
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
@@ -43,8 +46,11 @@ jobs:
           grep -q 'implements Listener' com/ultimateduels/listeners/CommandBlockListener.java
           grep -q 'ignoreCancelled = false' com/ultimateduels/listeners/CommandBlockListener.java
           grep -q 'isInLobbyWorld(player)' com/ultimateduels/listeners/CommandBlockListener.java
-          grep -q 'teleport-on-join' com/ultimateduels/lobby/LobbyManager.java
-          grep -q 'getDroppedItemClearManager().track' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'new com.ultimateduels.listeners.CommandBlockListener(this)' com/ultimateduels/UltimateDuels.java
+          grep -q 'getDroppedItemClearManager()' com/ultimateduels/UltimateDuels.java
+          grep -q 'startDuelMatch(match)' com/ultimateduels/duel/DuelManager.java
+          grep -q 'startFFAMatch(arenaName, arena.getArena())' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'clearExistingItems' com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'item-clear' com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'handleCombatLogout' com/ultimateduels/ffa/FFAManager.java
           echo 'Patch sources validated.'
