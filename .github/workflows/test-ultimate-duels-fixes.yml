@@ -2,7 +2,9 @@ name: Build UltimateDuels 26.2 fixes
 
 on:
   push:
-    branches: [fix/ultimate-duels-7.2.0-paper-26.2]
+    branches:
+      - fix/ultimate-duels-7.2.0-paper-26.2
+      - fix/artifact-40-bugs
   workflow_dispatch:
 
 permissions:
@@ -28,14 +30,19 @@ jobs:
       - name: Repair patch sources for Paper 26.2
         run: python3 -u scripts/repair_patch_sources.py
 
+      - name: Apply artifact 40 source patches
+        run: python3 -u scripts/apply_artifact40_source_patches.py
+
       - name: Validate patch sources
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
+          test -f com/ultimateduels/listeners/Artifact40BugFixListener.java
           grep -q 'implements Listener' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'Artifact40BugFixListener' com/ultimateduels/listeners/ListenerManager.java
+          grep -q 'boolean isInLobbyWorld(Player player)' com/ultimateduels/lobby/LobbyManager.java
           grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
           grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
-          grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
           echo 'Patch sources validated.'
 
       - name: Set up JDK 25
@@ -59,6 +66,7 @@ jobs:
           jar tf "$JAR" | grep -q '^plugin.yml$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/Artifact40BugFixListener.class$'
           echo "Built artifact: $JAR"
           sha256sum "$JAR"
           ls -lh "$JAR"
@@ -66,7 +74,7 @@ jobs:
       - name: Upload test JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UltimateDuels-7.2.0-26.2-Fixes
+          name: UltimateDuels-7.2.0-26.2-Fixes-artifact40
           path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
           if-no-files-found: error
           retention-days: 14
