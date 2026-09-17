@@ -1,0 +1,55 @@
+name: Build UltimateDuels final bugfix v7
+
+on:
+  push:
+    branches: [fix/ultimate-duels-7.2.0-paper-26.2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - run: test -f vendor/UltimateDuels-7.2.0.jar
+      - run: python3 -u scripts/apply_source_fixes.py
+      - run: python3 -u scripts/repair_patch_sources.py
+      - run: python3 -u scripts/apply_runtime_bugfixes.py
+      - run: python3 -u scripts/apply_followup_fixes_v2.py
+      - run: python3 -u scripts/apply_match_command_item_fixes_v3.py
+      - run: python3 -u scripts/repair_final_match_fixes.py
+      - run: python3 -u scripts/apply_final_bugfixes_v7.py
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.1.0'
+      - name: Compile
+        run: gradle clean build --no-daemon --stacktrace
+      - name: Verify final JAR
+        run: |
+          JAR="build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar"
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q '^plugin.yml$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerJoinQuitListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/ffa/DroppedItemClearManager.class$'
+          unzip -p "$JAR" config.yml | grep -q 'message-at-seconds: 3'
+          sha256sum "$JAR"
+          ls -lh "$JAR"
+      - name: Upload final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDuels-7.2.0-26.2-Fixes-v7
+          path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
+          if-no-files-found: error
+          retention-days: 14
