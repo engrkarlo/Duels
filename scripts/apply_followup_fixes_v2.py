@@ -24,7 +24,17 @@ def patch_command_block(text):
         if (worlds.isEmpty() || worlds.stream().noneMatch(w -> w.equalsIgnoreCase(player.getWorld().getName()))) return;'''
     old2 = '''        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
         if (worlds.isEmpty() || worlds.stream().noneMatch(w -> w.equalsIgnoreCase(player.getWorld().getName()))) return;'''
-    new = '''        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
+    old3 = '''        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
+        boolean configuredWorld = worlds.stream().anyMatch(w -> w.equalsIgnoreCase(player.getWorld().getName()));
+        boolean lobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+        if (!configuredWorld && !lobbyWorld) return;'''
+    new = '''        boolean enabled = this.plugin.getConfig().getBoolean("command-blocking.enabled", false)
+                || this.plugin.getConfig().getBoolean("command-blocker.enabled", false);
+        if (!enabled) return;
+        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
+        if (worlds.isEmpty()) {
+            worlds = this.plugin.getConfig().getStringList("command-blocker.worlds");
+        }
         boolean configuredWorld = worlds.stream().anyMatch(w -> w.equalsIgnoreCase(player.getWorld().getName()));
         boolean lobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
         if (!configuredWorld && !lobbyWorld) return;'''
@@ -32,8 +42,22 @@ def patch_command_block(text):
         text = text.replace(old1, new, 1)
     elif old2 in text:
         text = text.replace(old2, new, 1)
-    elif 'boolean configuredWorld = worlds.stream().anyMatch' not in text:
+    elif old3 in text:
+        text = text.replace(old3, new, 1)
+    elif 'boolean enabled = this.plugin.getConfig().getBoolean("command-blocking.enabled"' not in text:
         raise RuntimeError('Command blocking world check was not found')
+
+    # Support the alternate command-blocker key without changing the normal config format.
+    old_commands = '''        for (String configured : this.plugin.getConfig().getStringList("command-blocking.commands")) {
+            String value = configured.trim().toLowerCase(Locale.ROOT);'''
+    new_commands = '''        List<String> configuredCommands = this.plugin.getConfig().getStringList("command-blocking.commands");
+        if (configuredCommands.isEmpty()) {
+            configuredCommands = this.plugin.getConfig().getStringList("command-blocker.commands");
+        }
+        for (String configured : configuredCommands) {
+            String value = configured.trim().toLowerCase(Locale.ROOT);'''
+    if old_commands in text:
+        text = text.replace(old_commands, new_commands, 1)
     return text
 
 
@@ -45,6 +69,26 @@ def patch_lobby_manager(text):
     if old in text:
         return text.replace(old, new, 1)
     return text
+
+
+def patch_join_persistence(text):
+    marker = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+            boolean teleportToLobby = this.shouldTeleportToLobbyOnJoin()
+                    && this.plugin.getLobbyManager() != null
+                    && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null;'''
+    replacement = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+            // A returning player must keep the world/location persisted by Paper/Multiverse across restarts.
+            // Lobby teleport-on-join is only allowed for a first-time player or a player already in the lobby.
+            boolean returningInNormalWorld = player.hasPlayedBefore() && !inLobbyWorld;
+            boolean teleportToLobby = !returningInNormalWorld
+                    && this.shouldTeleportToLobbyOnJoin()
+                    && this.plugin.getLobbyManager() != null
+                    && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null;'''
+    if marker in text:
+        return text.replace(marker, replacement, 1)
+    if 'boolean returningInNormalWorld = player.hasPlayedBefore() && !inLobbyWorld;' in text:
+        return text
+    raise RuntimeError('Join persistence block was not found')
 
 
 def patch_ffa_manager(text):
@@ -68,6 +112,7 @@ def patch_ffa_manager(text):
             raise RuntimeError('shouldDropItemsOnDeath method not found')
         text = text.replace(marker, helper + marker, 1)
 
+    # Track only items deliberately dropped by the FFA death path. Never scan/remove arbitrary world items.
     raw_main = 'player.getWorld().dropItemNaturally(player.getLocation(), item.clone());'
     tracked_main = '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), item.clone());
                     this.getDroppedItemClearManager().track(dropped, player);'''
@@ -91,12 +136,22 @@ import org.bukkit.World;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+import net.kyori.adventure.text.Component;
 
-/** Tracks FFA death drops and removes only tracked items after a configurable delay. */
+/** Tracks only FFA death drops and removes those tracked entities after a configurable delay. */
 public final class DroppedItemClearManager {
     private final UltimateDuels plugin;
-    private final Map<UUID, Long> trackedItems = new ConcurrentHashMap<>();
+    private final Map<UUID, TrackedDrop> trackedItems = new ConcurrentHashMap<>();
     private BukkitTask task;
+
+    private static final class TrackedDrop {
+        private final long expiresAt;
+        private final UUID sourcePlayer;
+        private TrackedDrop(long expiresAt, UUID sourcePlayer) {
+            this.expiresAt = expiresAt;
+            this.sourcePlayer = sourcePlayer;
+        }
+    }
 
     public DroppedItemClearManager(UltimateDuels plugin) {
         this.plugin = plugin;
@@ -105,16 +160,27 @@ public final class DroppedItemClearManager {
     public void track(Item item, Player source) {
         if (item == null || source == null || !item.isValid()) return;
         if (!this.plugin.getConfig().getBoolean("item-clear.enabled", true)) return;
-        if (this.plugin.getConfig().getBoolean("item-clear.lobby-world-only", true)) {
-            if (this.plugin.getLobbyManager() == null || !this.plugin.getLobbyManager().isInLobbyWorld(source)) return;
-        }
         int seconds = Math.max(0, this.plugin.getConfig().getInt("item-clear.delay-seconds", 30));
         if (seconds <= 0) {
             item.remove();
             return;
         }
-        this.trackedItems.put(item.getUniqueId(), System.currentTimeMillis() + seconds * 1000L);
+        this.trackedItems.put(item.getUniqueId(), new TrackedDrop(
+                System.currentTimeMillis() + seconds * 1000L,
+                source.getUniqueId()));
         this.ensureTask();
+    }
+
+    private boolean isConfiguredLobbyWorld(World world) {
+        if (world == null) return false;
+        String configured = this.plugin.getConfig().getString("lobby.world", null);
+        if (configured == null || configured.isBlank()) {
+            configured = this.plugin.getConfig().getString("lobby-world", null);
+        }
+        if (configured != null && !configured.isBlank()) {
+            return configured.equalsIgnoreCase(world.getName());
+        }
+        return this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorldName(world.getName());
     }
 
     private void ensureTask() {
@@ -130,16 +196,9 @@ public final class DroppedItemClearManager {
         }
         long now = System.currentTimeMillis();
         long nextRemaining = Long.MAX_VALUE;
-        for (Map.Entry<UUID, Long> entry : this.trackedItems.entrySet()) {
-            Item item = null;
-            for (World world : Bukkit.getWorlds()) {
-                org.bukkit.entity.Entity entity = world.getEntity(entry.getKey());
-                if (entity instanceof Item) {
-                    item = (Item) entity;
-                    break;
-                }
-            }
-            long remaining = entry.getValue() - now;
+        for (Map.Entry<UUID, TrackedDrop> entry : this.trackedItems.entrySet()) {
+            Item item = findItem(entry.getKey());
+            long remaining = entry.getValue().expiresAt - now;
             if (remaining <= 0L || item == null || !item.isValid()) {
                 if (item != null && item.isValid()) item.remove();
                 this.trackedItems.remove(entry.getKey());
@@ -148,15 +207,28 @@ public final class DroppedItemClearManager {
             nextRemaining = Math.min(nextRemaining, remaining);
         }
         if (nextRemaining == Long.MAX_VALUE) return;
+
         int seconds = (int)Math.ceil(nextRemaining / 1000.0);
-        String template = this.plugin.getConfig().getString("item-clear.actionbar", "&eDropped items clear in &f{time}s");
-        String message = template.replace("{time}", String.valueOf(seconds)).replace("{seconds}", String.valueOf(seconds));
-        net.kyori.adventure.text.Component actionBar = net.kyori.adventure.text.Component.text(message.replace('&', '\u00a7'));
+        String template = this.plugin.getConfig().getString(
+                "item-clear.actionbar", "&eDropped items clear in &f{time}s");
+        String message = template.replace("{time}", String.valueOf(seconds))
+                .replace("{seconds}", String.valueOf(seconds));
+        Component actionBar = Component.text(message.replace('&', '\u00a7'));
+
+        // The countdown is intentionally shown only in the configured lobby world.
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player)) {
+            if (this.isConfiguredLobbyWorld(player.getWorld())) {
                 player.sendActionBar(actionBar);
             }
         }
+    }
+
+    private Item findItem(UUID uuid) {
+        for (World world : Bukkit.getWorlds()) {
+            org.bukkit.entity.Entity entity = world.getEntity(uuid);
+            if (entity instanceof Item item) return item;
+        }
+        return null;
     }
 
     public void shutdown() {
@@ -169,13 +241,11 @@ public final class DroppedItemClearManager {
 
 edit('com/ultimateduels/listeners/CommandBlockListener.java', patch_command_block)
 edit('com/ultimateduels/lobby/LobbyManager.java', patch_lobby_manager)
+edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_join_persistence)
 edit('com/ultimateduels/ffa/FFAManager.java', patch_ffa_manager)
 
 manager = ROOT / 'com/ultimateduels/ffa/DroppedItemClearManager.java'
-if not manager.exists():
-    manager.write_text(MANAGER, encoding='utf-8')
-    print('created', manager)
-else:
-    print('already exists', manager)
-
+manager.write_text(MANAGER, encoding='utf-8')
+print('wrote', manager)
 print('follow-up fixes v2 applied')
+'''
