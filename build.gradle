@@ -66,8 +66,13 @@ tasks.register('applyBugfixesV4', Exec) {
     commandLine 'python3', 'scripts/apply_bugfixes_v4.py'
 }
 
-tasks.named('compileJava') {
+tasks.register('applyMatchStartHooksV4', Exec) {
     dependsOn tasks.named('applyBugfixesV4')
+    commandLine 'python3', 'scripts/apply_match_start_hooks_v4.py'
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('applyMatchStartHooksV4')
     doFirst {
         def p = file('com/ultimateduels/listeners/PlayerDropListener.java')
         if (p.exists()) {
