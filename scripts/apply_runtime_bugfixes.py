@@ -20,12 +20,15 @@ def replace_once(text, old, new, rel):
     return text.replace(old, new, 1)
 
 
-# Returning players must not have their normal-world inventory reset merely because
-# UltimateDuels initializes its join handlers. Lobby preparation is now limited to
-# an actual lobby-world entry/teleport.
 def patch_join(text):
     old = '''            this.resetPlayerState(player);\n            if (this.shouldTeleportToLobbyOnJoin() && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null) {\n                player.teleport(lobbySpawn);\n            }\n            if (this.shouldGiveLobbyItemsOnJoin()) {\n                this.plugin.getLobbyManager().giveHotbarItems(player);\n            }'''
     new = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);\n            boolean teleportToLobby = this.shouldTeleportToLobbyOnJoin()\n                    && this.plugin.getLobbyManager() != null\n                    && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null;\n            if (teleportToLobby) {\n                this.resetPlayerState(player);\n                player.teleport(lobbySpawn);\n                inLobbyWorld = true;\n            } else if (inLobbyWorld) {\n                this.resetPlayerState(player);\n            }\n            if (inLobbyWorld && this.shouldGiveLobbyItemsOnJoin()) {\n                this.plugin.getLobbyManager().giveHotbarItems(player);\n            }'''
+    return replace_once(text, old, new, 'com/ultimateduels/listeners/PlayerJoinQuitListener.java')
+
+
+def patch_join_settings(text):
+    old = '''    private boolean shouldTeleportToLobbyOnJoin() {\n        if (this.plugin.getConfig().contains("lobby.teleport-on-join")) {\n            return this.plugin.getConfig().getBoolean("lobby.teleport-on-join", true);\n        }\n        return this.plugin.getConfig().getBoolean("lobby.enabled", true);\n    }\n\n    private boolean shouldGiveLobbyItemsOnJoin() {\n        if (this.plugin.getConfig().contains("lobby.give-items-on-join")) {\n            return this.plugin.getConfig().getBoolean("lobby.give-items-on-join", true);\n        }\n        if (this.plugin.getConfig().contains("lobby.give-lobby-items")) {\n            return this.plugin.getConfig().getBoolean("lobby.give-lobby-items", true);\n        }\n        return this.plugin.getConfig().getBoolean("lobby.enabled", true);\n    }'''
+    new = '''    private boolean shouldTeleportToLobbyOnJoin() {\n        if (this.plugin.getLobbyManager() != null) {\n            return this.plugin.getLobbyManager().isTeleportOnJoin();\n        }\n        return this.plugin.getConfig().getBoolean("lobby.teleport-on-join", false);\n    }\n\n    private boolean shouldGiveLobbyItemsOnJoin() {\n        if (this.plugin.getLobbyManager() != null) {\n            return this.plugin.getLobbyManager().isGiveItemsOnJoin();\n        }\n        return this.plugin.getConfig().getBoolean("lobby.give-items-on-join", false);\n    }'''
     return replace_once(text, old, new, 'com/ultimateduels/listeners/PlayerJoinQuitListener.java')
 
 
@@ -48,6 +51,7 @@ def patch_death_listener(text):
 
 
 edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_join)
+edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_join_settings)
 edit('com/ultimateduels/listeners/CommandBlockListener.java', patch_command_block)
 edit('com/ultimateduels/ffa/FFAManager.java', patch_ffa_manager)
 edit('com/ultimateduels/listeners/PlayerDeathListener.java', patch_death_listener)
