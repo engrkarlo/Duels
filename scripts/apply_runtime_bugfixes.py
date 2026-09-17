@@ -32,6 +32,12 @@ def patch_join_settings(text):
     return replace_once(text, old, new, 'com/ultimateduels/listeners/PlayerJoinQuitListener.java')
 
 
+def patch_quit(text):
+    old = '''        if (this.plugin.getFFAManager().isInFFA(playerId)) {\n            this.plugin.getFFAManager().removePlayer(playerId);\n        }'''
+    new = '''        if (this.plugin.getFFAManager().isInFFA(playerId)) {\n            if (this.plugin.getFFAManager().isCombatTagged(playerId)) {\n                this.plugin.getFFAManager().handleCombatLogout(player);\n            } else {\n                this.plugin.getFFAManager().removePlayer(playerId);\n            }\n        }'''
+    return replace_once(text, old, new, 'com/ultimateduels/listeners/PlayerJoinQuitListener.java')
+
+
 def patch_command_block(text):
     old = '''        WorldRestrictionManager restrictions = this.plugin.getWorldRestrictionManager();\n        if (restrictions != null && !restrictions.isPluginAllowedInWorld(player.getWorld())) return;\n        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");'''
     new = '''        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");'''
@@ -52,6 +58,7 @@ def patch_death_listener(text):
 
 edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_join)
 edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_join_settings)
+edit('com/ultimateduels/listeners/PlayerJoinQuitListener.java', patch_quit)
 edit('com/ultimateduels/listeners/CommandBlockListener.java', patch_command_block)
 edit('com/ultimateduels/ffa/FFAManager.java', patch_ffa_manager)
 edit('com/ultimateduels/listeners/PlayerDeathListener.java', patch_death_listener)
