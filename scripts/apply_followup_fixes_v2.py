@@ -47,7 +47,6 @@ def patch_command_block(text):
     elif 'boolean enabled = this.plugin.getConfig().getBoolean("command-blocking.enabled"' not in text:
         raise RuntimeError('Command blocking world check was not found')
 
-    # Support the alternate command-blocker key without changing the normal config format.
     old_commands = '''        for (String configured : this.plugin.getConfig().getStringList("command-blocking.commands")) {
             String value = configured.trim().toLowerCase(Locale.ROOT);'''
     new_commands = '''        List<String> configuredCommands = this.plugin.getConfig().getStringList("command-blocking.commands");
@@ -77,8 +76,8 @@ def patch_join_persistence(text):
                     && this.plugin.getLobbyManager() != null
                     && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null;'''
     replacement = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
-            // A returning player must keep the world/location persisted by Paper/Multiverse across restarts.
-            // Lobby teleport-on-join is only allowed for a first-time player or a player already in the lobby.
+            // Returning players keep the world/location persisted by Paper/Multiverse across restarts.
+            // Teleport-on-join is reserved for first-time players or players already in the lobby.
             boolean returningInNormalWorld = player.hasPlayedBefore() && !inLobbyWorld;
             boolean teleportToLobby = !returningInNormalWorld
                     && this.shouldTeleportToLobbyOnJoin()
@@ -112,7 +111,6 @@ def patch_ffa_manager(text):
             raise RuntimeError('shouldDropItemsOnDeath method not found')
         text = text.replace(marker, helper + marker, 1)
 
-    # Track only items deliberately dropped by the FFA death path. Never scan/remove arbitrary world items.
     raw_main = 'player.getWorld().dropItemNaturally(player.getLocation(), item.clone());'
     tracked_main = '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), item.clone());
                     this.getDroppedItemClearManager().track(dropped, player);'''
@@ -146,10 +144,8 @@ public final class DroppedItemClearManager {
 
     private static final class TrackedDrop {
         private final long expiresAt;
-        private final UUID sourcePlayer;
-        private TrackedDrop(long expiresAt, UUID sourcePlayer) {
+        private TrackedDrop(long expiresAt) {
             this.expiresAt = expiresAt;
-            this.sourcePlayer = sourcePlayer;
         }
     }
 
@@ -165,9 +161,7 @@ public final class DroppedItemClearManager {
             item.remove();
             return;
         }
-        this.trackedItems.put(item.getUniqueId(), new TrackedDrop(
-                System.currentTimeMillis() + seconds * 1000L,
-                source.getUniqueId()));
+        this.trackedItems.put(item.getUniqueId(), new TrackedDrop(System.currentTimeMillis() + seconds * 1000L));
         this.ensureTask();
     }
 
@@ -177,10 +171,7 @@ public final class DroppedItemClearManager {
         if (configured == null || configured.isBlank()) {
             configured = this.plugin.getConfig().getString("lobby-world", null);
         }
-        if (configured != null && !configured.isBlank()) {
-            return configured.equalsIgnoreCase(world.getName());
-        }
-        return this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorldName(world.getName());
+        return configured != null && !configured.isBlank() && configured.equalsIgnoreCase(world.getName());
     }
 
     private void ensureTask() {
@@ -215,7 +206,7 @@ public final class DroppedItemClearManager {
                 .replace("{seconds}", String.valueOf(seconds));
         Component actionBar = Component.text(message.replace('&', '\u00a7'));
 
-        // The countdown is intentionally shown only in the configured lobby world.
+        // Countdown is intentionally visible only in the configured lobby world.
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (this.isConfiguredLobbyWorld(player.getWorld())) {
                 player.sendActionBar(actionBar);
@@ -248,4 +239,3 @@ manager = ROOT / 'com/ultimateduels/ffa/DroppedItemClearManager.java'
 manager.write_text(MANAGER, encoding='utf-8')
 print('wrote', manager)
 print('follow-up fixes v2 applied')
-'''
