@@ -108,6 +108,17 @@ def patch_ffa_manager(text):
         marker = '    private final Map<UUID, CombatData> combatTracking;'
         text = text.replace(marker, marker + '\n    private DroppedItemClearManager droppedItemClearManager;', 1)
 
+    if 'public String getPlayerArenaName(@Nonnull UUID uuid)' not in text:
+        marker = '    public boolean shouldDropItemsOnDeath() {'
+        helper = '''    public String getPlayerArenaName(@Nonnull UUID uuid) {
+        return this.playerArenaMap.get(uuid);
+    }
+
+'''
+        if marker not in text:
+            raise RuntimeError('FFAManager insertion point not found')
+        text = text.replace(marker, helper + marker, 1)
+
     if 'private DroppedItemClearManager getDroppedItemClearManager()' not in text:
         marker = '    public boolean shouldDropItemsOnDeath() {'
         helper = '''    private DroppedItemClearManager getDroppedItemClearManager() {
@@ -174,6 +185,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
@@ -219,7 +231,8 @@ public final class DroppedItemClearManager {
         DuelArena arena = instance.getArena();
         int radius = Math.max(1, this.plugin.getConfig().getInt("item-clear.match-start-clear-radius", 64));
         double radiusSquared = (double)radius * radius;
-        for (org.bukkit.Location spawn : arena.getSpawnPoints()) {
+        for (int i = 0; i < arena.getSpawnPoints().size(); i++) {
+            Location spawn = arena.getSpawnPoints().get(i).getLocation();
             if (spawn == null || spawn.getWorld() == null) continue;
             for (Entity entity : spawn.getWorld().getNearbyEntities(spawn, radius, radius, radius)) {
                 if (!(entity instanceof Item item)) continue;
