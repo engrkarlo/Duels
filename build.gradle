@@ -34,6 +34,8 @@ sourceSets {
             include 'com/ultimateduels/listeners/ListenerManager.java'
             include 'com/ultimateduels/listeners/LobbyListener.java'
             include 'com/ultimateduels/listeners/WorldChangeListener.java'
+            include 'com/ultimateduels/listeners/PlayerJoinQuitListener.java'
+            include 'com/ultimateduels/listeners/PlayerDeathListener.java'
             include 'com/ultimateduels/visuals/HealthPacketSender.java'
             include 'com/ultimateduels/player/PlayerStateManager.java'
             include 'com/ultimateduels/lobby/LobbyManager.java'
