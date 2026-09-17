@@ -44,6 +44,7 @@ jobs:
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerJoinQuitListener.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/ffa/DroppedItemClearManager.class$'
           unzip -p "$JAR" config.yml | grep -q 'message-at-seconds: 3'
+          unzip -p "$JAR" config.yml | grep -q 'interval-seconds: 30'
           sha256sum "$JAR"
           ls -lh "$JAR"
       - name: Upload final artifact
