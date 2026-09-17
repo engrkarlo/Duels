@@ -1,15 +1,9 @@
-plugins {
-    id 'java'
-}
+plugins { id 'java' }
 
 group = 'com.ultimateduels'
 version = '7.2.0-26.2-Fixes'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 
 repositories {
     mavenCentral()
@@ -20,9 +14,7 @@ repositories {
 }
 
 def baseJar = file('vendor/UltimateDuels-7.2.0.jar')
-if (!baseJar.exists()) {
-    throw new GradleException('Missing vendor/UltimateDuels-7.2.0.jar. Upload the original 7.2.0 JAR to vendor/ before building.')
-}
+if (!baseJar.exists()) throw new GradleException('Missing vendor/UltimateDuels-7.2.0.jar.')
 
 sourceSets {
     main {
@@ -71,6 +63,24 @@ tasks.register('preparePatchJar', Exec) {
 
 tasks.named('compileJava') {
     dependsOn tasks.named('preparePatchJar')
+    doFirst {
+        def p = file('com/ultimateduels/listeners/PlayerDropListener.java')
+        if (p.exists()) {
+            def t = p.getText('UTF-8')
+            t = t.replace('import com.ultimateduels.ffa.DroppedItemClearManager;\n', '')
+            t = t.replace('private final DroppedItemClearManager droppedItemClearManager;', 'private final com.ultimateduels.ffa.DroppedItemClearManager droppedItemClearManager;')
+            t = t.replace('new DroppedItemClearManager(plugin)', 'new com.ultimateduels.ffa.DroppedItemClearManager(plugin)')
+            p.setText(t, 'UTF-8')
+        }
+        def m = file('com/ultimateduels/ffa/DroppedItemClearManager.java')
+        if (m.exists()) {
+            def t = m.getText('UTF-8')
+            if (!t.contains('import com.ultimateduels.ffa.model.FFAArenaInstance;')) {
+                t = t.replace('import com.ultimateduels.arena.model.DuelArena;\n', 'import com.ultimateduels.arena.model.DuelArena;\nimport com.ultimateduels.ffa.model.FFAArenaInstance;\n')
+                m.setText(t, 'UTF-8')
+            }
+        }
+    }
 }
 
 tasks.register('overlayJar', Jar) {
@@ -84,10 +94,5 @@ tasks.register('overlayJar', Jar) {
     from(sourceSets.main.output)
 }
 
-tasks.named('jar') {
-    enabled = false
-}
-
-tasks.named('build') {
-    dependsOn tasks.named('overlayJar')
-}
+tasks.named('jar') { enabled = false }
+tasks.named('build') { dependsOn tasks.named('overlayJar') }
