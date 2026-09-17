@@ -78,7 +78,7 @@ tasks.register('overlayJar', Jar) {
     archiveVersion.set('7.2.0-26.2-Fixes')
     archiveClassifier.set('')
     destinationDirectory.set(layout.buildDirectory.dir('libs'))
-    duplicatesStrategy.set(DuplicatesStrategy.EXCLUDE)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(layout.buildDirectory.dir('base'))
     from(sourceSets.main.output)
 }
