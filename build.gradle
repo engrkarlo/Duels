@@ -61,8 +61,13 @@ tasks.register('preparePatchJar', Exec) {
     commandLine 'python3', 'scripts/prepare_patch_jar.py'
 }
 
-tasks.named('compileJava') {
+tasks.register('applyBugfixesV4', Exec) {
     dependsOn tasks.named('preparePatchJar')
+    commandLine 'python3', 'scripts/apply_bugfixes_v4.py'
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('applyBugfixesV4')
     doFirst {
         def p = file('com/ultimateduels/listeners/PlayerDropListener.java')
         if (p.exists()) {
@@ -71,14 +76,6 @@ tasks.named('compileJava') {
             t = t.replace('private final DroppedItemClearManager droppedItemClearManager;', 'private final com.ultimateduels.ffa.DroppedItemClearManager droppedItemClearManager;')
             t = t.replace('new DroppedItemClearManager(plugin)', 'new com.ultimateduels.ffa.DroppedItemClearManager(plugin)')
             p.setText(t, 'UTF-8')
-        }
-        def m = file('com/ultimateduels/ffa/DroppedItemClearManager.java')
-        if (m.exists()) {
-            def t = m.getText('UTF-8')
-            if (!t.contains('import com.ultimateduels.ffa.model.FFAArenaInstance;')) {
-                t = t.replace('import com.ultimateduels.arena.model.DuelArena;\n', 'import com.ultimateduels.arena.model.DuelArena;\nimport com.ultimateduels.ffa.model.FFAArenaInstance;\n')
-                m.setText(t, 'UTF-8')
-            }
         }
     }
 }
