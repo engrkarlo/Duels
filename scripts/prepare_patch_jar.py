@@ -16,11 +16,13 @@ PATCHED_CLASSES = [
     'com/ultimateduels/listeners/WorldChangeListener.class',
     'com/ultimateduels/listeners/PlayerJoinQuitListener.class',
     'com/ultimateduels/listeners/PlayerDeathListener.class',
+    'com/ultimateduels/listeners/PlayerDropListener.class',
     'com/ultimateduels/visuals/HealthPacketSender.class',
     'com/ultimateduels/player/PlayerStateManager.class',
     'com/ultimateduels/lobby/LobbyManager.class',
     'com/ultimateduels/commands/LobbyCommand.class',
     'com/ultimateduels/ffa/FFAManager.class',
+    'com/ultimateduels/ffa/DroppedItemClearManager.class',
 ]
 
 if not BASE.is_file():
@@ -48,28 +50,12 @@ plugin_yml = OUT / 'plugin.yml'
 if plugin_yml.exists():
     text = plugin_yml.read_text(encoding='utf-8')
     text = re.sub(r'(?m)^\s*- spawn\s*$\n?', '', text)
-    text = re.sub(
-        r'(?m)^(\s*aliases:\s*\[)([^\]]*)(\])',
-        lambda m: m.group(1) + ', '.join(x.strip() for x in m.group(2).split(',') if x.strip().lower() != 'spawn') + m.group(3),
-        text,
-    )
+    text = re.sub(r'(?m)^(\s*aliases:\s*\[)([^\]]*)(\])', lambda m: m.group(1) + ', '.join(x.strip() for x in m.group(2).split(',') if x.strip().lower() != 'spawn') + m.group(3), text)
     plugin_yml.write_text(text, encoding='utf-8')
 
 config = OUT / 'config.yml'
 if config.exists():
     text = config.read_text(encoding='utf-8')
-    if '\ncommand-blocking:' not in text:
-        text += '''\n\ncommand-blocking:\n  enabled: false\n  worlds:\n    - lobby\n  commands:\n    - pl\n    - plugins\n    - bukkit:plugins\n    - version\n    - ver\n    - help\n    - spawn\n    - home\n    - homes\n    - fly\n    - tpa\n    - tpaccept\n    - tpadeny\n    - tp\n    - pwarp\n  message: '&cYou cannot use that command in this world.'\n'''
-    if '\ncombat-log:' not in text:
-        text += '''\ncombat-log:\n  message: '&cYou are in combat for &e{time}s&c!'\n  display: action-bar\n'''
-    if 'death-items-drop:' not in text:
-        match = re.search(r'(?m)^ffa:\s*$', text)
-        if match:
-            next_top = re.search(r'(?m)^\S', text[match.end():])
-            insert_at = match.end() + (next_top.start() if next_top else len(text[match.end():]))
-            text = text[:insert_at] + '  death-items-drop: false\n' + text[insert_at:]
-        else:
-            text += '\nffa:\n  death-items-drop: false\n'
     config.write_text(text, encoding='utf-8')
 
 print(f'Prepared original JAR at {OUT}')
