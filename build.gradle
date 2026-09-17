@@ -77,8 +77,6 @@ tasks.named('compileJava') {
         def drop = file('com/ultimateduels/listeners/PlayerDropListener.java')
         if (drop.exists()) {
             def t = drop.getText('UTF-8')
-            // The old repair task removes the import; use a fully-qualified reference so
-            // the generated source cannot lose the manager symbol during compilation.
             t = t.replace('import com.ultimateduels.ffa.DroppedItemClearManager;\n', '')
             t = t.replace('DroppedItemClearManager.get(plugin)', 'com.ultimateduels.ffa.DroppedItemClearManager.get(plugin)')
             t = t.replace('private final DroppedItemClearManager droppedItemClearManager;', 'private final com.ultimateduels.ffa.DroppedItemClearManager droppedItemClearManager;')
@@ -89,10 +87,20 @@ tasks.named('compileJava') {
         def ffa = file('com/ultimateduels/ffa/FFAManager.java')
         if (ffa.exists()) {
             def t = ffa.getText('UTF-8')
-            // Some earlier repair passes route through a plugin getter whose declared
-            // type is the original manager. Use the v4 singleton directly.
             t = t.replace('this.plugin.getDroppedItemClearManager()', 'DroppedItemClearManager.get(this.plugin)')
             ffa.setText(t, 'UTF-8')
+        }
+
+        def manager = file('com/ultimateduels/ffa/DroppedItemClearManager.java')
+        if (manager.exists()) {
+            def t = manager.getText('UTF-8')
+            // Java requires captured lambda locals to be final/effectively final. Use a
+            // normal loop here because interval is normalized above in tick().
+            t = t.replace(
+                'this.nextClearAt.replaceAll((key, ignored) -> now + interval * 1000L);',
+                'for (String key : new java.util.HashSet<>(this.nextClearAt.keySet())) { this.nextClearAt.put(key, now + interval * 1000L); }'
+            )
+            manager.setText(t, 'UTF-8')
         }
     }
 }
