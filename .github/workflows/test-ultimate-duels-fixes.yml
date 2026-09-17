@@ -31,17 +31,25 @@ jobs:
       - name: Apply runtime bugfixes
         run: python3 -u scripts/apply_runtime_bugfixes.py
 
+      - name: Apply follow-up runtime fixes
+        run: python3 -u scripts/apply_followup_fixes.py
+
+      - name: Repair FFA item tracking
+        run: python3 -u scripts/repair_item_tracking.py
+
       - name: Validate patch sources
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
           test -f com/ultimateduels/listeners/PlayerJoinQuitListener.java
           test -f com/ultimateduels/listeners/PlayerDeathListener.java
+          test -f com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'implements Listener' com/ultimateduels/listeners/CommandBlockListener.java
-          grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
-          grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
-          grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
+          grep -q 'ignoreCancelled = false' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'isInLobbyWorld(player)' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'teleport-on-join' com/ultimateduels/lobby/LobbyManager.java
+          grep -q 'getDroppedItemClearManager().track' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'item-clear' com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'handleCombatLogout' com/ultimateduels/ffa/FFAManager.java
-          grep -q 'dropInventoryItems' com/ultimateduels/listeners/PlayerDeathListener.java
           echo 'Patch sources validated.'
 
       - name: Set up JDK 25
@@ -67,6 +75,7 @@ jobs:
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerJoinQuitListener.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerDeathListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/ffa/DroppedItemClearManager.class$'
           echo "Built artifact: $JAR"
           sha256sum "$JAR"
           ls -lh "$JAR"
