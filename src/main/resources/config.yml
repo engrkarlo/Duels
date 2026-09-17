@@ -19,6 +19,7 @@ database:
 lobby:
   enabled: true
   world-name: lobby
+  teleport-on-join: false
   separate-world: false
   void-teleport: true
   void-level: 0
@@ -145,3 +146,8 @@ command-blocking:
 combat-log:
   message: '&cYou are in combat for &e{time}s&c!'
   display: action-bar
+item-clear:
+  enabled: true
+  delay-seconds: 30
+  lobby-world-only: true
+  actionbar: '&eDropped items clear in &f{time}s'
