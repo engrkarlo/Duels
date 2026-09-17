@@ -31,6 +31,7 @@ sourceSets {
             include 'com/ultimateduels/UltimateDuels.java'
             include 'com/ultimateduels/listeners/BlockProtectionListener.java'
             include 'com/ultimateduels/listeners/CommandBlockListener.java'
+            include 'com/ultimateduels/listeners/Artifact40BugFixListener.java'
             include 'com/ultimateduels/listeners/ListenerManager.java'
             include 'com/ultimateduels/listeners/LobbyListener.java'
             include 'com/ultimateduels/listeners/WorldChangeListener.java'
@@ -65,8 +66,13 @@ tasks.register('preparePatchJar', Exec) {
     commandLine 'python3', 'scripts/prepare_patch_jar.py'
 }
 
-tasks.named('compileJava') {
+tasks.register('applyArtifact40SourcePatches', Exec) {
     dependsOn tasks.named('preparePatchJar')
+    commandLine 'python3', 'scripts/apply_artifact40_source_patches.py'
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('applyArtifact40SourcePatches')
 }
 
 tasks.register('overlayJar', Jar) {
