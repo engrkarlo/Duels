@@ -1,0 +1,104 @@
+name: UltimateDuels
+version: '7.2.0-26.2-Fixes'
+main: com.ultimateduels.UltimateDuels
+api-version: '1.21'
+author: geturplugins
+description: UltimateDuels - competitive dueling, parties and FFA.
+load: POSTWORLD
+softdepend:
+  - FastAsyncWorldEdit
+  - WorldEdit
+  - PlaceholderAPI
+permissions:
+  ultimateduels.player:
+    default: true
+  ultimateduels.admin:
+    default: op
+  ultimateduels.duel:
+    default: true
+  ultimateduels.queue:
+    default: true
+  ultimateduels.party:
+    default: true
+  ultimateduels.ffa:
+    default: true
+  ultimateduels.spectate:
+    default: true
+  ultimateduels.stats:
+    default: true
+  ultimateduels.settings:
+    default: true
+  ultimateduels.kit.custom:
+    default: true
+  ultimateduels.kiteditor:
+    default: true
+  ultimateduels.lobby:
+    default: true
+  ultimateduels.ping:
+    default: true
+  ultimateduels.language:
+    default: true
+commands:
+  ultimateduels:
+    aliases: [ud, duels]
+  duel:
+    aliases: [d, 1v1]
+  accept: {}
+  deny: {}
+  forfeit: {}
+  queue:
+    aliases: [q]
+  leavequeue:
+    aliases: [lq, unqueue]
+  togglequeue:
+    aliases: [tq]
+  party:
+    aliases: [p]
+  pchat:
+    aliases: [pc]
+  partyaccept:
+    aliases: [paccept]
+  partyleave:
+    aliases: [pleave]
+  ffa: {}
+  ffagui:
+    aliases: [ffamenu]
+  leaveffa: {}
+  spectate:
+    aliases: [spec, watch]
+  unspectate:
+    aliases: [unspec]
+  stats:
+    aliases: [stat, mystats]
+  leaderboard:
+    aliases: [lb, top, rankings]
+  duelsettings:
+    aliases: [settings, prefs, preferences]
+  toggle:
+    aliases: [togglesetting, ts]
+  kit:
+    aliases: [kits]
+  kiteditor:
+    aliases: [editkit, customkit, kitedit]
+  kitgive: {}
+  lobby:
+    aliases: [ds, hub, leave, duellobby, l]
+  ping:
+    aliases: [latency, ms]
+  language:
+    aliases: [lang]
+  dueladmin:
+    aliases: [da, duelsadmin]
+  arena:
+    aliases: [arenas]
+  setspawn: {}
+  setcorner:
+    aliases: [arenacorner, corner]
+  forceduel: {}
+  forceend: {}
+  setlobby:
+    aliases: [setduellobby, setduelspawn]
+  duelsreload:
+    aliases: [udreload]
+  ffaadmin:
+    aliases: [ffaa, ffasetup]

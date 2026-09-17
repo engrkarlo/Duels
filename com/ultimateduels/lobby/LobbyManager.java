@@ -385,8 +385,11 @@ public class LobbyManager {
 
     public void sendToLobby(@Nonnull Player player, boolean teleport, boolean restoreState) {
         UUID uuid = player.getUniqueId();
+        boolean alreadyInLobbyWorld = this.isInLobbyWorld(player);
         if (restoreState && this.playerStateManager != null && this.playerStateManager.hasState(uuid)) {
             this.playerStateManager.restoreState(player);
+        } else if (!restoreState && !alreadyInLobbyWorld && this.playerStateManager != null && !this.playerStateManager.hasLobbyState(uuid)) {
+            this.playerStateManager.saveLobbyState(player);
         }
         this.preparePlayerForLobby(player);
         if (teleport && this.lobbySpawn != null) {

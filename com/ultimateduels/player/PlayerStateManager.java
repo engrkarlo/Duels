@@ -60,12 +60,22 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 public class PlayerStateManager {
     private final UltimateDuels plugin;
     private final Map<UUID, PlayerState> savedStates;
+    private final Map<UUID, PlayerState> lobbyStates;
+    private final Map<UUID, PlayerState> lobbyStates;
+    private final Map<UUID, PlayerState> lobbyStates;
+    private final Map<UUID, PlayerState> lobbyStates;
+    private final Map<UUID, PlayerState> lobbyStates;
     private final Set<UUID> spectatingPlayers;
     private File backupFile;
 
     public PlayerStateManager(UltimateDuels plugin) {
         this.plugin = plugin;
         this.savedStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
+        this.lobbyStates = new ConcurrentHashMap<UUID, PlayerState>();
         this.spectatingPlayers = ConcurrentHashMap.newKeySet();
         this.initializeBackupFile();
         this.loadPersistedStates();
@@ -197,6 +207,21 @@ public class PlayerStateManager {
         }, 5L);
         player.updateInventory();
     }
+
+    public boolean saveLobbyState(@Nonnull Player player) {
+        try { this.lobbyStates.put(player.getUniqueId(), this.captureState(player)); return true; }
+        catch (Exception e) { this.plugin.getLogger().log(Level.WARNING, "Failed to save lobby state for " + player.getName(), e); return false; }
+    }
+
+    public boolean restoreLobbyState(@Nonnull Player player) {
+        UUID uuid = player.getUniqueId();
+        PlayerState state = this.lobbyStates.get(uuid);
+        if (state == null) return false;
+        try { this.applyState(player, state); this.lobbyStates.remove(uuid); return true; }
+        catch (Exception e) { this.plugin.getLogger().log(Level.WARNING, "Failed to restore lobby state for " + player.getName(), e); return false; }
+    }
+
+    public boolean hasLobbyState(@Nonnull UUID uuid) { return this.lobbyStates.containsKey(uuid); }
 
     public boolean quickSave(@Nonnull Player player) {
         try {

@@ -1,0 +1,96 @@
+name: Build UltimateDuels 26.2 fixes
+
+on:
+  push:
+    branches: [fix/ultimate-duels-7.2.0-paper-26.2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check for original JAR
+        run: |
+          test -f vendor/UltimateDuels-7.2.0.jar
+          echo 'Original UltimateDuels JAR found.'
+
+      - name: Apply source fixes
+        run: python3 -u scripts/apply_source_fixes.py
+
+      - name: Repair patch sources for Paper 26.2
+        run: python3 -u scripts/repair_patch_sources.py
+
+      - name: Apply runtime bugfixes
+        run: python3 -u scripts/apply_runtime_bugfixes.py
+
+      - name: Apply follow-up runtime fixes
+        run: python3 -u scripts/apply_followup_fixes_v2.py
+
+      - name: Apply final command and match cleanup fixes
+        run: python3 -u scripts/apply_match_command_item_fixes_v3.py
+
+      - name: Repair final match fixes
+        run: python3 -u scripts/repair_final_match_fixes.py
+
+      - name: Validate patch sources
+        run: |
+          test -f com/ultimateduels/listeners/CommandBlockListener.java
+          test -f com/ultimateduels/listeners/PlayerJoinQuitListener.java
+          test -f com/ultimateduels/listeners/PlayerDeathListener.java
+          test -f com/ultimateduels/ffa/DroppedItemClearManager.java
+          grep -q 'implements Listener' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'ignoreCancelled = false' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'isInLobbyWorld(player)' com/ultimateduels/listeners/CommandBlockListener.java
+          grep -q 'new com.ultimateduels.listeners.CommandBlockListener(this)' com/ultimateduels/UltimateDuels.java
+          grep -q 'getDroppedItemClearManager()' com/ultimateduels/UltimateDuels.java
+          grep -q 'startDuelMatch(match)' com/ultimateduels/duel/DuelManager.java
+          grep -q 'startFFAMatch(arenaName, arena.getArena())' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'clearExistingItems' com/ultimateduels/ffa/DroppedItemClearManager.java
+          grep -q 'clearArena(String arenaName)' com/ultimateduels/ffa/DroppedItemClearManager.java
+          grep -q 'item-clear' com/ultimateduels/ffa/DroppedItemClearManager.java
+          grep -q 'handleCombatLogout' com/ultimateduels/ffa/FFAManager.java
+          echo 'Patch sources validated.'
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Compile and overlay test JAR
+        run: gradle clean build --no-daemon --stacktrace
+
+      - name: Verify test JAR
+        run: |
+          JAR="build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar"
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q '^plugin.yml$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerJoinQuitListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerDeathListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/ffa/DroppedItemClearManager.class$'
+          echo "Built artifact: $JAR"
+          sha256sum "$JAR"
+          ls -lh "$JAR"
+
+      - name: Upload test JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDuels-7.2.0-26.2-Fixes
+          path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
+          if-no-files-found: error
+          retention-days: 14

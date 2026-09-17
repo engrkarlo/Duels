@@ -623,6 +623,15 @@ extends JavaPlugin {
                 TabCompleter tabCompleter = (TabCompleter)executor;
                 command.setTabCompleter(tabCompleter);
             }
+            if ("lobby".equalsIgnoreCase(name)) {
+                command.setAliases(java.util.Collections.singletonList("ds"));
+            }
+            if ("lobby".equalsIgnoreCase(name)) {
+                command.setAliases(java.util.Collections.singletonList("ds"));
+            }
+            if ("lobby".equalsIgnoreCase(name)) {
+                command.setAliases(java.util.Collections.singletonList("ds"));
+            }
         } else {
             this.getLogger().warning("Command '" + name + "' not found in plugin.yml!");
         }

@@ -46,6 +46,7 @@ public class ListenerManager {
         this.registerListener(pm, new FoodLevelListener(this.plugin));
         this.registerListener(pm, new BlockProtectionListener(this.plugin));
         this.registerListener(pm, new ChatListener(this.plugin));
+        this.registerListener(pm, new CommandBlockListener(this.plugin));
         this.plugin.getLogger().info("Registered " + this.listeners.size() + " listeners!");
     }
 
