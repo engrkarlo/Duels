@@ -32,10 +32,7 @@ jobs:
         run: python3 -u scripts/apply_runtime_bugfixes.py
 
       - name: Apply follow-up runtime fixes
-        run: python3 -u scripts/apply_followup_fixes.py
-
-      - name: Repair FFA item tracking
-        run: python3 -u scripts/repair_item_tracking.py
+        run: python3 -u scripts/apply_followup_fixes_v2.py
 
       - name: Validate patch sources
         run: |
