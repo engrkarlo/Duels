@@ -28,14 +28,20 @@ jobs:
       - name: Repair patch sources for Paper 26.2
         run: python3 -u scripts/repair_patch_sources.py
 
+      - name: Apply runtime bugfixes
+        run: python3 -u scripts/apply_runtime_bugfixes.py
+
       - name: Validate patch sources
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
+          test -f com/ultimateduels/listeners/PlayerJoinQuitListener.java
+          test -f com/ultimateduels/listeners/PlayerDeathListener.java
           grep -q 'implements Listener' com/ultimateduels/listeners/CommandBlockListener.java
           grep -q 'getTextDisplayEntityType(entityTypeClass)' com/ultimateduels/visuals/HealthPacketSender.java
           grep -q 'saveLobbyState' com/ultimateduels/player/PlayerStateManager.java
           grep -q 'restoreLobbyState' com/ultimateduels/listeners/LobbyListener.java
-          grep -q 'combatLogMessage' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'handleCombatLogout' com/ultimateduels/ffa/FFAManager.java
+          grep -q 'dropInventoryItems' com/ultimateduels/listeners/PlayerDeathListener.java
           echo 'Patch sources validated.'
 
       - name: Set up JDK 25
@@ -59,6 +65,8 @@ jobs:
           jar tf "$JAR" | grep -q '^plugin.yml$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerJoinQuitListener.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/PlayerDeathListener.class$'
           echo "Built artifact: $JAR"
           sha256sum "$JAR"
           ls -lh "$JAR"
