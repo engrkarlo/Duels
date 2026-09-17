@@ -37,6 +37,9 @@ jobs:
       - name: Apply final command and match cleanup fixes
         run: python3 -u scripts/apply_match_command_item_fixes_v3.py
 
+      - name: Repair final match fixes
+        run: python3 -u scripts/repair_final_match_fixes.py
+
       - name: Validate patch sources
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
@@ -51,6 +54,7 @@ jobs:
           grep -q 'startDuelMatch(match)' com/ultimateduels/duel/DuelManager.java
           grep -q 'startFFAMatch(arenaName, arena.getArena())' com/ultimateduels/ffa/FFAManager.java
           grep -q 'clearExistingItems' com/ultimateduels/ffa/DroppedItemClearManager.java
+          grep -q 'clearArena(String arenaName)' com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'item-clear' com/ultimateduels/ffa/DroppedItemClearManager.java
           grep -q 'handleCombatLogout' com/ultimateduels/ffa/FFAManager.java
           echo 'Patch sources validated.'
