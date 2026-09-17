@@ -41,6 +41,7 @@ sourceSets {
             include 'com/ultimateduels/lobby/LobbyManager.java'
             include 'com/ultimateduels/commands/LobbyCommand.java'
             include 'com/ultimateduels/ffa/FFAManager.java'
+            include 'com/ultimateduels/ffa/DroppedItemClearManager.java'
         }
         resources.setSrcDirs([])
     }
@@ -77,7 +78,7 @@ tasks.register('overlayJar', Jar) {
     archiveVersion.set('7.2.0-26.2-Fixes')
     archiveClassifier.set('')
     destinationDirectory.set(layout.buildDirectory.dir('libs'))
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy.set(DuplicatesStrategy.EXCLUDE)
     from(layout.buildDirectory.dir('base'))
     from(sourceSets.main.output)
 }
