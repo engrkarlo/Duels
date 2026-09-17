@@ -74,13 +74,25 @@ tasks.register('applyMatchStartHooksV4', Exec) {
 tasks.named('compileJava') {
     dependsOn tasks.named('applyMatchStartHooksV4')
     doFirst {
-        def p = file('com/ultimateduels/listeners/PlayerDropListener.java')
-        if (p.exists()) {
-            def t = p.getText('UTF-8')
+        def drop = file('com/ultimateduels/listeners/PlayerDropListener.java')
+        if (drop.exists()) {
+            def t = drop.getText('UTF-8')
+            // The old repair task removes the import; use a fully-qualified reference so
+            // the generated source cannot lose the manager symbol during compilation.
             t = t.replace('import com.ultimateduels.ffa.DroppedItemClearManager;\n', '')
+            t = t.replace('DroppedItemClearManager.get(plugin)', 'com.ultimateduels.ffa.DroppedItemClearManager.get(plugin)')
             t = t.replace('private final DroppedItemClearManager droppedItemClearManager;', 'private final com.ultimateduels.ffa.DroppedItemClearManager droppedItemClearManager;')
             t = t.replace('new DroppedItemClearManager(plugin)', 'new com.ultimateduels.ffa.DroppedItemClearManager(plugin)')
-            p.setText(t, 'UTF-8')
+            drop.setText(t, 'UTF-8')
+        }
+
+        def ffa = file('com/ultimateduels/ffa/FFAManager.java')
+        if (ffa.exists()) {
+            def t = ffa.getText('UTF-8')
+            // Some earlier repair passes route through a plugin getter whose declared
+            // type is the original manager. Use the v4 singleton directly.
+            t = t.replace('this.plugin.getDroppedItemClearManager()', 'DroppedItemClearManager.get(this.plugin)')
+            ffa.setText(t, 'UTF-8')
         }
     }
 }
