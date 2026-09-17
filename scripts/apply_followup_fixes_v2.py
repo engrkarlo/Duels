@@ -61,14 +61,21 @@ def patch_command_block(text):
 
 
 def patch_join_persistence(text):
-    marker = '''            this.resetPlayerState(player);
-            if (this.shouldTeleportToLobbyOnJoin() && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null) {
+    old_runtime = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+            boolean teleportToLobby = this.shouldTeleportToLobbyOnJoin()
+                    && this.plugin.getLobbyManager() != null
+                    && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null;
+            if (teleportToLobby) {
+                this.resetPlayerState(player);
                 player.teleport(lobbySpawn);
+                inLobbyWorld = true;
+            } else if (inLobbyWorld) {
+                this.resetPlayerState(player);
             }
-            if (this.shouldGiveLobbyItemsOnJoin()) {
+            if (inLobbyWorld && this.shouldGiveLobbyItemsOnJoin()) {
                 this.plugin.getLobbyManager().giveHotbarItems(player);
             }'''
-    replacement = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+    new_runtime = '''            boolean inLobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
             boolean firstJoin = !player.hasPlayedBefore();
             boolean firstJoinTeleport = firstJoin && this.plugin.getConfig().getBoolean("lobby.first-join-teleport", false);
             boolean manageLobby = inLobbyWorld || firstJoinTeleport;
@@ -88,8 +95,18 @@ def patch_join_persistence(text):
                     this.plugin.getLobbyManager().giveHotbarItems(player);
                 }
             }'''
-    if marker in text:
-        return text.replace(marker, replacement, 1)
+    if old_runtime in text:
+        return text.replace(old_runtime, new_runtime, 1)
+
+    old_direct = '''            this.resetPlayerState(player);
+            if (this.shouldTeleportToLobbyOnJoin() && (lobbySpawn = this.plugin.getLobbyManager().getLobbySpawn()) != null) {
+                player.teleport(lobbySpawn);
+            }
+            if (this.shouldGiveLobbyItemsOnJoin()) {
+                this.plugin.getLobbyManager().giveHotbarItems(player);
+            }'''
+    if old_direct in text:
+        return text.replace(old_direct, new_runtime, 1)
     if 'boolean firstJoinTeleport = firstJoin && this.plugin.getConfig().getBoolean("lobby.first-join-teleport", false);' in text:
         return text
     raise RuntimeError('Join persistence block was not found')
@@ -107,7 +124,6 @@ def patch_ffa_manager(text):
     if 'private DroppedItemClearManager droppedItemClearManager;' not in text:
         marker = '    private final Map<UUID, CombatData> combatTracking;'
         text = text.replace(marker, marker + '\n    private DroppedItemClearManager droppedItemClearManager;', 1)
-
     if 'public String getPlayerArenaName(@Nonnull UUID uuid)' not in text:
         marker = '    public boolean shouldDropItemsOnDeath() {'
         helper = '''    public String getPlayerArenaName(@Nonnull UUID uuid) {
@@ -115,10 +131,8 @@ def patch_ffa_manager(text):
     }
 
 '''
-        if marker not in text:
-            raise RuntimeError('FFAManager insertion point not found')
+        if marker not in text: raise RuntimeError('FFAManager insertion point not found')
         text = text.replace(marker, helper + marker, 1)
-
     if 'private DroppedItemClearManager getDroppedItemClearManager()' not in text:
         marker = '    public boolean shouldDropItemsOnDeath() {'
         helper = '''    private DroppedItemClearManager getDroppedItemClearManager() {
@@ -129,20 +143,12 @@ def patch_ffa_manager(text):
     }
 
 '''
-        if marker not in text:
-            raise RuntimeError('shouldDropItemsOnDeath method not found')
+        if marker not in text: raise RuntimeError('shouldDropItemsOnDeath method not found')
         text = text.replace(marker, helper + marker, 1)
-
-    raw_main = 'player.getWorld().dropItemNaturally(player.getLocation(), item.clone());'
-    tracked_main = '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), item.clone());
-                    this.getDroppedItemClearManager().track(dropped, player);'''
-    text = text.replace(raw_main, tracked_main)
-
-    raw_off = 'player.getWorld().dropItemNaturally(player.getLocation(), offHand.clone());'
-    tracked_off = '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), offHand.clone());
-                this.getDroppedItemClearManager().track(dropped, player);'''
-    text = text.replace(raw_off, tracked_off)
-
+    text = text.replace('player.getWorld().dropItemNaturally(player.getLocation(), item.clone());', '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), item.clone());
+                    this.getDroppedItemClearManager().track(dropped, player);''')
+    text = text.replace('player.getWorld().dropItemNaturally(player.getLocation(), offHand.clone());', '''org.bukkit.entity.Item dropped = player.getWorld().dropItemNaturally(player.getLocation(), offHand.clone());
+                this.getDroppedItemClearManager().track(dropped, player);''')
     marker = '''        FFAPlayerData playerData = new FFAPlayerData(uuid, player.getName(), arenaName);
         this.playerDataMap.put(uuid, playerData);'''
     replacement = '''        boolean firstPlayerInArena = arena.getPlayerCount() == 0;
@@ -151,8 +157,7 @@ def patch_ffa_manager(text):
         }
         FFAPlayerData playerData = new FFAPlayerData(uuid, player.getName(), arenaName);
         this.playerDataMap.put(uuid, playerData);'''
-    if marker in text:
-        text = text.replace(marker, replacement, 1)
+    if marker in text: text = text.replace(marker, replacement, 1)
     return text
 
 
@@ -207,19 +212,14 @@ public final class DroppedItemClearManager {
         }
     }
 
-    public DroppedItemClearManager(UltimateDuels plugin) {
-        this.plugin = plugin;
-    }
+    public DroppedItemClearManager(UltimateDuels plugin) { this.plugin = plugin; }
 
     public void track(Item item, Player source) {
         if (item == null || source == null || !item.isValid()) return;
         if (!this.plugin.getConfig().getBoolean("item-clear.enabled", true)) return;
         if (this.plugin.getFFAManager() == null || !this.plugin.getFFAManager().isInFFA(source.getUniqueId())) return;
         int seconds = Math.max(0, this.plugin.getConfig().getInt("item-clear.delay-seconds", 30));
-        if (seconds <= 0) {
-            item.remove();
-            return;
-        }
+        if (seconds <= 0) { item.remove(); return; }
         String arena = this.plugin.getFFAManager().getPlayerArenaName(source.getUniqueId());
         this.trackedItems.put(item.getUniqueId(), new TrackedDrop(System.currentTimeMillis() + seconds * 1000L, arena));
         this.ensureTask();
@@ -230,7 +230,7 @@ public final class DroppedItemClearManager {
         if (instance == null || instance.getArena() == null) return;
         DuelArena arena = instance.getArena();
         int radius = Math.max(1, this.plugin.getConfig().getInt("item-clear.match-start-clear-radius", 64));
-        double radiusSquared = (double)radius * radius;
+        double radiusSquared = (double) radius * radius;
         for (int i = 0; i < arena.getSpawnPoints().size(); i++) {
             Location spawn = arena.getSpawnPoints().get(i).getLocation();
             if (spawn == null || spawn.getWorld() == null) continue;
@@ -265,10 +265,9 @@ public final class DroppedItemClearManager {
                 this.trackedItems.remove(entry.getKey());
                 continue;
             }
-            int seconds = (int)Math.ceil(remaining / 1000.0);
+            int seconds = (int) Math.ceil(remaining / 1000.0);
             arenaCountdowns.merge(entry.getValue().arenaName, seconds, Math::min);
         }
-
         String display = this.plugin.getConfig().getString("item-clear.display", "action-bar").toLowerCase();
         if ("none".equals(display)) return;
         String template = this.plugin.getConfig().getString("item-clear.message", "&eDropped items clear in &f{time}s");
@@ -291,12 +290,6 @@ public final class DroppedItemClearManager {
         }
         return null;
     }
-
-    public void shutdown() {
-        if (this.task != null) this.task.cancel();
-        this.task = null;
-        this.trackedItems.clear();
-    }
 }
 '''
 
@@ -309,4 +302,4 @@ edit('com/ultimateduels/listeners/PlayerDropListener.java', patch_player_drop_li
 manager = ROOT / 'com/ultimateduels/ffa/DroppedItemClearManager.java'
 manager.write_text(rewrite_manager(''), encoding='utf-8')
 print('wrote', manager)
-print('follow-up fixes v3 applied')
+print('follow-up fixes v4 applied')
