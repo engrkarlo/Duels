@@ -32,6 +32,8 @@ jobs:
         run: python3 -u scripts/repair_final_match_fixes.py
       - name: Apply final bugfixes v6
         run: python3 -u scripts/apply_final_bugfixes_v6.py
+      - name: Apply explicit match-start cleanup hooks
+        run: python3 -u scripts/apply_match_start_hooks_v4.py
       - name: Validate final sources
         run: |
           grep -q 'this.reloadConfig();' com/ultimateduels/UltimateDuels.java
@@ -60,6 +62,7 @@ jobs:
           jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
           jar tf "$JAR" | grep -q '^com/ultimateduels/ffa/DroppedItemClearManager.class$'
           unzip -p "$JAR" config.yml | grep -q 'message-at-seconds: 3'
+          unzip -p "$JAR" config.yml | grep -q 'interval-seconds: 30'
           sha256sum "$JAR"
           ls -lh "$JAR"
       - name: Upload final artifact
