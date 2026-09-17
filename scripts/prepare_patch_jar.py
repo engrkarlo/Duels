@@ -14,6 +14,8 @@ PATCHED_CLASSES = [
     'com/ultimateduels/listeners/ListenerManager.class',
     'com/ultimateduels/listeners/LobbyListener.class',
     'com/ultimateduels/listeners/WorldChangeListener.class',
+    'com/ultimateduels/listeners/PlayerJoinQuitListener.class',
+    'com/ultimateduels/listeners/PlayerDeathListener.class',
     'com/ultimateduels/visuals/HealthPacketSender.class',
     'com/ultimateduels/player/PlayerStateManager.class',
     'com/ultimateduels/lobby/LobbyManager.class',
