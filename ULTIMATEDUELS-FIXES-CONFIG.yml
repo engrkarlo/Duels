@@ -29,6 +29,29 @@ command-blocking:
     - pwarp
   message: '&cYou cannot use that command in this world.'
 
+# State-specific command blocking. This is separate from command-blocking:
+# these commands are blocked only while the player is queued, in a duel,
+# in FFA, or spectating. The normal lobby is unaffected.
+state-command-blocking:
+  enabled: true
+  message: '&cYou cannot use that command while you are in a match or queue.'
+  queue:
+    enabled: true
+    commands:
+      - spawn
+  duel:
+    enabled: true
+    commands:
+      - spawn
+  ffa:
+    enabled: true
+    commands:
+      - spawn
+  spectating:
+    enabled: true
+    commands:
+      - spawn
+
 # FFA combat logging message and display location.
 # Supported display values: action-bar, chat, both, none
 combat-log:
