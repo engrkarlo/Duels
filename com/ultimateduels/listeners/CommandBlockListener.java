@@ -1,7 +1,6 @@
 package com.ultimateduels.listeners;
 
 import com.ultimateduels.UltimateDuels;
-import com.ultimateduels.world.WorldRestrictionManager;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -14,140 +13,158 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 /**
- * Blocks configured commands in configured worlds and prevents players who are
- * queued or actively dueling from escaping through teleport commands.
+ * Handles world command blocking and state-specific command blocking.
  *
- * This listener intentionally does not touch PlayerTeleportEvent. Duel cleanup
- * is therefore free to teleport winners/losers back to the lobby normally.
+ * State blocking is intentionally command-based only. It never cancels
+ * PlayerTeleportEvent, so UltimateDuels can still teleport players during
+ * normal match cleanup.
  */
 public final class CommandBlockListener implements Listener {
-    private static final Set<String> TELEPORT_COMMANDS = Set.of(
-            "spawn",
-            "home",
-            "homes",
-            "warp",
-            "warps",
-            "pwarp",
-            "pwarps",
-            "tp",
-            "teleport",
-            "tpa",
-            "tpahere",
-            "tpaccept",
-            "tpdeny",
-            "back",
-            "rtp",
-            "randomteleport",
-            "top",
-            "jumpto",
-            "lobby",
-            "hub",
-            "leave",
-            "duellobby",
-            "ds"
-    );
-
     private final UltimateDuels plugin;
 
     public CommandBlockListener(UltimateDuels plugin) {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
-
-        String raw = event.getMessage();
-        if (raw == null) {
-            return;
-        }
-        raw = raw.trim();
-        if (raw.startsWith("/")) {
-            raw = raw.substring(1).trim();
-        }
-        if (raw.isEmpty()) {
-            return;
-        }
-
-        String[] parts = raw.split("\\s+");
-        String root = normalizeCommand(parts[0]);
+        String root = normalizeCommandRoot(event.getMessage());
         if (root.isEmpty()) {
             return;
         }
 
-        /*
-         * State protection is deliberately independent of command-blocking.enabled
-         * and command-blocking.worlds. A player must not be able to escape a queue
-         * or active duel simply by changing the command-blocking configuration.
-         */
-        if (isTeleportLocked(player) && TELEPORT_COMMANDS.contains(root)) {
+        // Existing world-based command blocker. This remains independent from
+        // state blocking so lobby command restrictions continue to work.
+        if (this.plugin.getConfig().getBoolean("command-blocking.enabled", false)
+                && isConfiguredWorld(player)
+                && isConfiguredCommand(root)) {
             event.setCancelled(true);
-            player.sendMessage(this.plugin.colorize(
-                    "&cYou cannot use teleport commands while you are queued or in a duel."
+            player.sendMessage(color(
+                    this.plugin.getConfig().getString(
+                            "command-blocking.message",
+                            "&cYou cannot use that command in this world.")
             ));
-            this.plugin.debug("Blocked teleport command /" + root + " from " + player.getName()
-                    + " (queued=" + isQueued(player.getUniqueId())
-                    + ", inDuel=" + isInDuel(player.getUniqueId()) + ")");
             return;
         }
 
-        if (!this.plugin.getConfig().getBoolean("command-blocking.enabled", false)) {
+        // State-specific blocker. This is separate from command-blocking so
+        // /spawn can be blocked in duels/FFA/queue without blocking /spawn
+        // in the normal UltimateDuels lobby.
+        if (!this.plugin.getConfig().getBoolean("state-command-blocking.enabled", true)) {
             return;
         }
 
-        WorldRestrictionManager restrictions = this.plugin.getWorldRestrictionManager();
-        if (restrictions != null && !restrictions.isPluginAllowedInWorld(player.getWorld())) {
+        String state = getBlockedState(player);
+        if (state == null) {
             return;
         }
 
+        String path = "state-command-blocking." + state;
+        if (!this.plugin.getConfig().getBoolean(path + ".enabled", true)) {
+            return;
+        }
+
+        List<String> configured = this.plugin.getConfig().getStringList(path + ".commands");
+        if (configured.isEmpty() && "spawn".equals(root)) {
+            // Safe built-in fallback for servers upgrading from an older config.
+            // Administrators can replace this by adding the state config.
+            configured = List.of("spawn");
+        }
+
+        if (!containsCommand(configured, root)) {
+            return;
+        }
+
+        event.setCancelled(true);
+        player.sendMessage(color(
+                this.plugin.getConfig().getString(
+                        "state-command-blocking.message",
+                        "&cYou cannot use that command while you are in a match or queue.")
+        ));
+        this.plugin.debug("Blocked state command /" + root + " from " + player.getName()
+                + " (state=" + state + ")");
+    }
+
+    private String getBlockedState(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        if (this.plugin.getQueueManager() != null
+                && this.plugin.getQueueManager().isInQueue(uuid)) {
+            return "queue";
+        }
+
+        if (this.plugin.getDuelManager() != null
+                && this.plugin.getDuelManager().isInMatch(uuid)) {
+            return "duel";
+        }
+
+        if (this.plugin.getFFAManager() != null
+                && this.plugin.getFFAManager().isInFFA(uuid)) {
+            return "ffa";
+        }
+
+        if (this.plugin.getDuelManager() != null
+                && this.plugin.getDuelManager().isSpectating(uuid)) {
+            return "spectating";
+        }
+
+        return null;
+    }
+
+    private boolean isConfiguredWorld(Player player) {
         List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
-        if (worlds.isEmpty()
-                || worlds.stream().noneMatch(w -> w.equalsIgnoreCase(player.getWorld().getName()))) {
-            return;
+        if (worlds.isEmpty()) {
+            worlds = this.plugin.getConfig().getStringList("command-blocker.worlds");
         }
+        return worlds.stream().anyMatch(w -> w != null
+                && w.trim().equalsIgnoreCase(player.getWorld().getName()));
+    }
 
+    private boolean isConfiguredCommand(String root) {
+        List<String> configured = this.plugin.getConfig().getStringList("command-blocking.commands");
+        if (configured.isEmpty()) {
+            configured = this.plugin.getConfig().getStringList("command-blocker.commands");
+        }
+        return containsCommand(configured, root);
+    }
+
+    private boolean containsCommand(List<String> configured, String root) {
         Set<String> blocked = new HashSet<>();
-        for (String configured : this.plugin.getConfig().getStringList("command-blocking.commands")) {
-            String value = normalizeCommand(configured);
+        for (String value : configured) {
+            if (value == null) {
+                continue;
+            }
+            value = normalizeCommandRoot(value);
             if (!value.isEmpty()) {
                 blocked.add(value);
             }
         }
-
-        if (blocked.contains(root)) {
-            event.setCancelled(true);
-            String message = this.plugin.getConfig().getString(
-                    "command-blocking.message",
-                    "&cYou cannot use that command in this world."
-            );
-            player.sendMessage(message.replace('&', '\u00a7'));
-        }
+        return blocked.contains(root);
     }
 
-    private boolean isTeleportLocked(Player player) {
-        UUID uuid = player.getUniqueId();
-        return isQueued(uuid) || isInDuel(uuid);
-    }
-
-    private boolean isQueued(UUID uuid) {
-        return this.plugin.getQueueManager() != null
-                && this.plugin.getQueueManager().isInQueue(uuid);
-    }
-
-    private boolean isInDuel(UUID uuid) {
-        return this.plugin.getDuelManager() != null
-                && this.plugin.getDuelManager().isInMatch(uuid);
-    }
-
-    private String normalizeCommand(String command) {
+    private String normalizeCommandRoot(String command) {
         String value = command == null ? "" : command.trim().toLowerCase(Locale.ROOT);
         while (value.startsWith("/")) {
             value = value.substring(1);
         }
-        int namespace = value.indexOf(':');
-        if (namespace >= 0) {
-            value = value.substring(namespace + 1);
+        if (value.isEmpty()) {
+            return "";
+        }
+
+        int space = value.indexOf(' ');
+        if (space >= 0) {
+            value = value.substring(0, space);
+        }
+
+        int colon = value.indexOf(':');
+        if (colon >= 0 && colon + 1 < value.length()) {
+            value = value.substring(colon + 1);
         }
         return value;
+    }
+
+    private String color(String message) {
+        return (message == null ? "" : message).replace('&', '\u00a7');
     }
 }
