@@ -17,7 +17,6 @@ repositories {
     maven { url = uri('https://repo.papermc.io/repository/maven-public/') }
     maven { url = uri('https://repo.extendedclip.com/content/repositories/placeholderapi/') }
     maven { url = uri('https://maven.enginehub.org/repo/') }
-    maven { url = uri('https://mvn.intellectualsites.com/content/repositories/snapshots/') }
 }
 
 dependencies {
@@ -25,8 +24,6 @@ dependencies {
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
     compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
-    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.9.2'
-    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.9.2'
     compileOnly 'org.jetbrains:annotations:24.1.0'
 
     implementation 'com.mysql:mysql-connector-j:9.2.0'
