@@ -1,47 +1,54 @@
-plugins {
-    id 'java'
-    id 'com.gradleup.shadow' version '8.3.6'
-}
+plugins { id 'java' }
 
 group = 'com.ultimateduels'
 version = '7.2.0-26.2-Fixes'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 
 repositories {
     mavenCentral()
     maven { url = uri('https://repo.papermc.io/repository/maven-public/') }
     maven { url = uri('https://repo.extendedclip.com/content/repositories/placeholderapi/') }
     maven { url = uri('https://maven.enginehub.org/repo/') }
+    maven { url = uri('https://mvn.intellectualsites.com/content/repositories/snapshots/') }
 }
 
-dependencies {
-    compileOnly 'io.papermc.paper:paper-api:26.2.build.123-stable'
-    compileOnly 'me.clip:placeholderapi:2.11.6'
-    compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
-    compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
-    compileOnly 'org.jetbrains:annotations:24.1.0'
-
-    implementation 'com.mysql:mysql-connector-j:9.2.0'
-    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
-    implementation 'com.google.code.gson:gson:2.10.1'
-    implementation 'net.kyori:adventure-text-serializer-gson:4.17.0'
-    implementation 'net.kyori:adventure-text-serializer-plain:4.17.0'
-}
+def baseJar = file('vendor/UltimateDuels-7.2.0.jar')
+if (!baseJar.exists()) throw new GradleException('Missing vendor/UltimateDuels-7.2.0.jar.')
 
 sourceSets {
     main {
         java {
-            srcDirs = ['com/ultimateduels']
+            srcDirs = ['.']
+            include 'com/ultimateduels/UltimateDuels.java'
+            include 'com/ultimateduels/listeners/BlockProtectionListener.java'
+            include 'com/ultimateduels/listeners/CommandBlockListener.java'
+            include 'com/ultimateduels/listeners/ListenerManager.java'
+            include 'com/ultimateduels/listeners/LobbyListener.java'
+            include 'com/ultimateduels/listeners/WorldChangeListener.java'
+            include 'com/ultimateduels/listeners/PlayerJoinQuitListener.java'
+            include 'com/ultimateduels/listeners/PlayerDeathListener.java'
+            include 'com/ultimateduels/listeners/PlayerDropListener.java'
+            include 'com/ultimateduels/visuals/HealthPacketSender.java'
+            include 'com/ultimateduels/player/PlayerStateManager.java'
+            include 'com/ultimateduels/lobby/LobbyManager.java'
+            include 'com/ultimateduels/commands/LobbyCommand.java'
+            include 'com/ultimateduels/ffa/FFAManager.java'
+            include 'com/ultimateduels/ffa/DroppedItemClearManager.java'
         }
-        resources {
-            srcDirs = ['src/main/resources']
-        }
+        resources.setSrcDirs([])
     }
+}
+
+dependencies {
+    compileOnly files(baseJar)
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.123-stable'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
+    compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.9.2'
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.9.2'
+    compileOnly 'org.jetbrains:annotations:24.1.0'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -50,30 +57,64 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add('-parameters')
 }
 
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+tasks.register('preparePatchJar', Exec) {
+    commandLine 'python3', 'scripts/prepare_patch_jar.py'
 }
 
-shadowJar {
+tasks.register('applyBugfixesV4', Exec) {
+    dependsOn tasks.named('preparePatchJar')
+    commandLine 'python3', 'scripts/apply_bugfixes_v4.py'
+}
+
+tasks.register('applyMatchStartHooksV4', Exec) {
+    dependsOn tasks.named('applyBugfixesV4')
+    commandLine 'python3', 'scripts/apply_match_start_hooks_v4.py'
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('applyMatchStartHooksV4')
+    doFirst {
+        def drop = file('com/ultimateduels/listeners/PlayerDropListener.java')
+        if (drop.exists()) {
+            def t = drop.getText('UTF-8')
+            t = t.replace('import com.ultimateduels.ffa.DroppedItemClearManager;\n', '')
+            t = t.replace('DroppedItemClearManager.get(plugin)', 'com.ultimateduels.ffa.DroppedItemClearManager.get(plugin)')
+            t = t.replace('private final DroppedItemClearManager droppedItemClearManager;', 'private final com.ultimateduels.ffa.DroppedItemClearManager droppedItemClearManager;')
+            t = t.replace('new DroppedItemClearManager(plugin)', 'new com.ultimateduels.ffa.DroppedItemClearManager(plugin)')
+            drop.setText(t, 'UTF-8')
+        }
+
+        def ffa = file('com/ultimateduels/ffa/FFAManager.java')
+        if (ffa.exists()) {
+            def t = ffa.getText('UTF-8')
+            t = t.replace('this.plugin.getDroppedItemClearManager()', 'DroppedItemClearManager.get(this.plugin)')
+            ffa.setText(t, 'UTF-8')
+        }
+
+        def manager = file('com/ultimateduels/ffa/DroppedItemClearManager.java')
+        if (manager.exists()) {
+            def t = manager.getText('UTF-8')
+            // Java requires captured lambda locals to be final/effectively final. Use a
+            // normal loop here because interval is normalized above in tick().
+            t = t.replace(
+                'this.nextClearAt.replaceAll((key, ignored) -> now + interval * 1000L);',
+                'for (String key : new java.util.HashSet<>(this.nextClearAt.keySet())) { this.nextClearAt.put(key, now + interval * 1000L); }'
+            )
+            manager.setText(t, 'UTF-8')
+        }
+    }
+}
+
+tasks.register('overlayJar', Jar) {
+    dependsOn tasks.named('compileJava')
     archiveBaseName.set('UltimateDuels')
     archiveVersion.set('7.2.0-26.2-Fixes')
     archiveClassifier.set('')
-    mergeServiceFiles()
-
-    relocate 'com.zaxxer.hikari', 'com.ultimateduels.libs.hikari'
-    relocate 'org.xerial', 'com.ultimateduels.libs.sqlite'
-    relocate 'net.kyori.adventure.text.serializer.gson', 'com.ultimateduels.libs.adventure.gson'
-    relocate 'net.kyori.adventure.text.serializer.plain', 'com.ultimateduels.libs.adventure.plain'
+    destinationDirectory.set(layout.buildDirectory.dir('libs'))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(layout.buildDirectory.dir('base'))
+    from(sourceSets.main.output)
 }
 
-tasks.build {
-    dependsOn tasks.shadowJar
-}
-
-tasks.jar {
-    enabled = false
-}
-
-tasks.named('shadowJar') {
-    dependsOn tasks.processResources
-}
+tasks.named('jar') { enabled = false }
+tasks.named('build') { dependsOn tasks.named('overlayJar') }
