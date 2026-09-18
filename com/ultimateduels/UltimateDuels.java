@@ -72,6 +72,7 @@ import com.ultimateduels.gui.GUIMessages;
 import com.ultimateduels.hooks.PlaceholderAPIHook;
 import com.ultimateduels.kit.KitManager;
 import com.ultimateduels.listeners.BlockProtectionListener;
+import com.ultimateduels.listeners.CommandBlockListener;
 import com.ultimateduels.listeners.FoodLevelListener;
 import com.ultimateduels.listeners.HealthDisplayListener;
 import com.ultimateduels.listeners.InventoryClickListener;
@@ -655,6 +656,7 @@ extends JavaPlugin {
         pm.registerEvents((Listener)new SignClickListener(this), (Plugin)this);
         pm.registerEvents((Listener)new ArenaWandListener(this), (Plugin)this);
         pm.registerEvents((Listener)new GUIListener(), (Plugin)this);
+        pm.registerEvents((Listener)new CommandBlockListener(this), (Plugin)this);
         this.getLogger().info("All listeners registered successfully!");
     }
 
