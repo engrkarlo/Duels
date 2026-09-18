@@ -129,3 +129,5 @@ jobs:
           retention-days: 14
 
 # artifact trigger after vendor restore
+
+# State-command blocking verification build.
