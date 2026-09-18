@@ -71,7 +71,11 @@ tasks.register('applyMatchStartHooksV4', Exec) {
     commandLine 'python3', 'scripts/apply_match_start_hooks_v4.py'
 }
 
-tasks.named('compileJava') {
+\ntasks.register('applyStateCommandBlocking', Exec) {
+    dependsOn tasks.named('applyMatchStartHooksV4')
+    commandLine 'python3', 'scripts/apply_state_command_blocking.py'
+}
+\ntasks.named('compileJava') {
     dependsOn tasks.named('applyMatchStartHooksV4')
     doFirst {
         def drop = file('com/ultimateduels/listeners/PlayerDropListener.java')
