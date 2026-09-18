@@ -1,0 +1,58 @@
+name: Build isolated command-blocking fix
+
+on:
+  push:
+    branches: [fix/separate-command-blocking]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check original JAR
+        run: test -f vendor/UltimateDuels-7.2.0.jar
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Compile and package
+        run: gradle clean build --no-daemon --stacktrace
+
+      - name: Verify isolated command blocking
+        run: |
+          JAR="build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar"
+          test -f "$JAR"
+          jar tf "$JAR" | grep -q '^plugin.yml$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/UltimateDuels.class$'
+          jar tf "$JAR" | grep -q '^com/ultimateduels/listeners/CommandBlockListener.class$'
+          unzip -p "$JAR" config.yml | grep -q 'lobby-command-blocking:'
+          unzip -p "$JAR" config.yml | grep -q 'state-command-blocking:'
+          unzip -p "$JAR" config.yml | grep -q '    - spawn'
+          sha256sum "$JAR"
+          ls -lh "$JAR"
+
+      - name: Upload working artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDuels-7.2.0-26.2-Separate-Command-Blocking
+          path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
+          if-no-files-found: error
+          retention-days: 14

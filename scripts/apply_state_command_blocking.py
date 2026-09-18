@@ -1,4 +1,9 @@
-package com.ultimateduels.listeners;
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+LISTENER = r'''package com.ultimateduels.listeners;
 
 import com.ultimateduels.UltimateDuels;
 import java.util.HashSet;
@@ -13,16 +18,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
-/**
- * Handles command blocking independently for the lobby and for active UltimateDuels states.
- *
- * The two systems are deliberately separate:
- * - lobby-command-blocking applies only to configured lobby/world names.
- * - state-command-blocking applies to queue, duel, FFA and spectator state.
- *
- * Configuration is read from ConfigManager on every command so /udreload config changes
- * take effect without restarting the plugin.
- */
 public final class CommandBlockListener implements Listener {
     private final UltimateDuels plugin;
 
@@ -43,11 +38,8 @@ public final class CommandBlockListener implements Listener {
         if (shouldBlockInLobby(player, command, config)
                 || shouldBlockInState(player, command, config)) {
             event.setCancelled(true);
-            String message = config.getString(
-                    getMessagePath(player, config),
-                    "&cYou cannot use that command here."
-            );
-            player.sendMessage(message.replace('&', '\u00a7'));
+            String message = getMessage(player, config);
+            player.sendMessage(message.replace('&', '\\u00a7'));
         }
     }
 
@@ -71,7 +63,6 @@ public final class CommandBlockListener implements Listener {
         UUID uuid = player.getUniqueId();
         String state = null;
 
-        // Check the most specific active state first.
         if (this.plugin.getQueueManager() != null
                 && this.plugin.getQueueManager().isInQueue(uuid)) {
             state = "queue";
@@ -89,8 +80,8 @@ public final class CommandBlockListener implements Listener {
         if (state == null) return false;
         if (!config.getBoolean("state-command-blocking." + state + ".enabled", true)) return false;
 
-        List<String> commands = config.getStringList("state-command-blocking." + state + ".commands");
-        return isBlockedCommand(command, commands);
+        return isBlockedCommand(command,
+                config.getStringList("state-command-blocking." + state + ".commands"));
     }
 
     private boolean isBlockedCommand(String command, List<String> configured) {
@@ -109,7 +100,6 @@ public final class CommandBlockListener implements Listener {
                 blocked.add(value.substring(colon + 1));
             }
         }
-
         return blocked.contains(command);
     }
 
@@ -126,13 +116,109 @@ public final class CommandBlockListener implements Listener {
                 : root;
     }
 
-    private String getMessagePath(Player player, FileConfiguration config) {
+    private String getMessage(Player player, FileConfiguration config) {
         if (config.getBoolean("lobby-command-blocking.enabled", false)
                 && config.getStringList("lobby-command-blocking.worlds").stream()
                 .anyMatch(world -> world != null
                         && world.trim().equalsIgnoreCase(player.getWorld().getName()))) {
-            return "lobby-command-blocking.message";
+            return config.getString("lobby-command-blocking.message",
+                    "&cYou cannot use that command in this world.");
         }
-        return "state-command-blocking.message";
+        return config.getString("state-command-blocking.message",
+                "&cYou cannot use that command while you are in a match or queue.");
     }
 }
+'''
+
+CONFIG = r'''# ------------------------------------------------------------
+# Lobby command blocking
+# ------------------------------------------------------------
+lobby-command-blocking:
+  enabled: false
+  worlds:
+    - lobby
+  commands:
+    - pl
+    - plugins
+    - bukkit:plugins
+    - version
+    - ver
+    - help
+    - spawn
+    - home
+    - homes
+    - fly
+    - tpa
+    - tpaccept
+    - tpadeny
+    - tp
+    - pwarp
+  message: '&cYou cannot use that command in this world.'
+
+# ------------------------------------------------------------
+# Queue / match / FFA / spectator command blocking
+# ------------------------------------------------------------
+state-command-blocking:
+  enabled: true
+  message: '&cYou cannot use that command while you are in a match or queue.'
+
+  queue:
+    enabled: true
+    commands:
+      - spawn
+
+  duel:
+    enabled: true
+    commands:
+      - spawn
+
+  ffa:
+    enabled: true
+    commands:
+      - spawn
+
+  spectating:
+    enabled: true
+    commands:
+      - spawn
+'''
+
+listener_path = ROOT / 'com/ultimateduels/listeners/CommandBlockListener.java'
+listener_path.write_text(LISTENER, encoding='utf-8')
+
+ultimate = ROOT / 'com/ultimateduels/UltimateDuels.java'
+text = ultimate.read_text(encoding='utf-8')
+if 'import com.ultimateduels.listeners.CommandBlockListener;' not in text:
+    text = text.replace(
+        'import com.ultimateduels.listeners.BlockProtectionListener;\n',
+        'import com.ultimateduels.listeners.BlockProtectionListener;\n'
+        'import com.ultimateduels.listeners.CommandBlockListener;\n',
+        1,
+    )
+marker = '        pm.registerEvents((Listener)new GUIListener(), (Plugin)this);'
+if 'new CommandBlockListener(this)' not in text and marker in text:
+    text = text.replace(
+        marker,
+        marker + '\n        pm.registerEvents((Listener)new CommandBlockListener(this), (Plugin)this);',
+        1,
+    )
+ultimate.write_text(text, encoding='utf-8')
+
+base_config = ROOT / 'build' / 'base' / 'config.yml'
+if base_config.exists():
+    text = base_config.read_text(encoding='utf-8')
+    start = text.find('\n# ------------------------------------------------------------\n# Command blocking\n# ------------------------------------------------------------')
+    if start >= 0:
+        end = text.find('\n# ------------------------------------------------------------\n# FFA item cleanup', start)
+        if end < 0:
+            end = text.find('\n# ------------------------------------------------------------\n# FFA combat timer display', start)
+        if end < 0:
+            end = len(text)
+        text = text[:start] + '\n' + CONFIG.rstrip() + '\n' + text[end:]
+    else:
+        text += '\n' + CONFIG
+    base_config.write_text(text, encoding='utf-8')
+else:
+    raise SystemExit('build/base/config.yml was not prepared')
+
+print('Applied isolated lobby/state command-blocking patch.')

@@ -122,7 +122,7 @@ scoreboard:
   update-interval-ticks: 20
 sound:
   enabled: true
-command-blocking:
+lobby-command-blocking:
   enabled: false
   worlds:
     - lobby
@@ -143,6 +143,30 @@ command-blocking:
     - tp
     - pwarp
   message: '&cYou cannot use that command in this world.'
+
+state-command-blocking:
+  enabled: true
+  message: '&cYou cannot use that command while you are in a match or queue.'
+
+  queue:
+    enabled: true
+    commands:
+      - spawn
+
+  duel:
+    enabled: true
+    commands:
+      - spawn
+
+  ffa:
+    enabled: true
+    commands:
+      - spawn
+
+  spectating:
+    enabled: true
+    commands:
+      - spawn
 combat-log:
   message: '&cYou are in combat for &e{time}s&c!'
   display: action-bar
