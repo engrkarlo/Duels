@@ -3,6 +3,8 @@ name: Build isolated command-blocking fix
 on:
   push:
     branches: [fix/separate-command-blocking]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
