@@ -59,48 +59,6 @@ def patch_command_listener(text):
         player.sendMessage(message.replace('&', '\\u00a7'));
         this.plugin.debug("Blocked state command /" + root + " from " + player.getName()
                 + " (state=" + state + ")");
-    }
-
-    private String getBlockedState(Player player) {
-        UUID uuid = player.getUniqueId();
-        if (this.plugin.getQueueManager() != null && this.plugin.getQueueManager().isInQueue(uuid)) return "queue";
-        if (this.plugin.getDuelManager() != null && this.plugin.getDuelManager().isInMatch(uuid)) return "duel";
-        if (this.plugin.getFFAManager() != null && this.plugin.getFFAManager().isInFFA(uuid)) return "ffa";
-        if (this.plugin.getDuelManager() != null && this.plugin.getDuelManager().isSpectating(uuid)) return "spectating";
-        return null;
-    }
-
-    private boolean isConfiguredWorld(Player player) {
-        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
-        if (worlds.isEmpty()) worlds = this.plugin.getConfig().getStringList("command-blocker.worlds");
-        return worlds.stream().anyMatch(w -> w != null && w.trim().equalsIgnoreCase(player.getWorld().getName()));
-    }
-
-    private boolean isConfiguredCommand(String root) {
-        List<String> configured = this.plugin.getConfig().getStringList("command-blocking.commands");
-        if (configured.isEmpty()) configured = this.plugin.getConfig().getStringList("command-blocker.commands");
-        return containsCommand(configured, root);
-    }
-
-    private boolean containsCommand(List<String> configured, String root) {
-        Set<String> blocked = new HashSet<>();
-        for (String value : configured) {
-            if (value == null) continue;
-            value = normalizeCommandRoot(value);
-            if (!value.isEmpty()) blocked.add(value);
-        }
-        return blocked.contains(root);
-    }
-
-    private String normalizeCommandRoot(String command) {
-        String value = command == null ? "" : command.trim().toLowerCase(Locale.ROOT);
-        while (value.startsWith("/")) value = value.substring(1);
-        if (value.isEmpty()) return "";
-        int space = value.indexOf(' ');
-        if (space >= 0) value = value.substring(0, space);
-        int colon = value.indexOf(':');
-        if (colon >= 0 && colon + 1 < value.length()) value = value.substring(colon + 1);
-        return value;
     }'''
     return text[:method_start] + new_method + text[body_end:]
 
