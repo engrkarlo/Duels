@@ -49,6 +49,8 @@ def patch_lobby_spawn_initialization(text):
 
 
 def patch_command_block(text):
+    if 'TELEPORT_COMMANDS' in text and 'isInQueue(uuid)' in text and 'isInMatch(uuid)' in text:
+        return text
     old = '''        WorldRestrictionManager restrictions = this.plugin.getWorldRestrictionManager();\n        if (restrictions != null && !restrictions.isPluginAllowedInWorld(player.getWorld())) return;\n        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");'''
     new = '''        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");'''
     return replace_once(text, old, new, 'com/ultimateduels/listeners/CommandBlockListener.java')
