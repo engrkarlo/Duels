@@ -15,66 +15,94 @@ def edit(rel, fn):
 
 
 def patch_command_listener(text):
-    # Keep the listener independent of WorldRestrictionManager. The command-blocking
-    # feature must be authoritative when enabled, including inside matches.
-    text = text.replace("import com.ultimateduels.world.WorldRestrictionManager;\n", "")
+    # Keep world command blocking and state command blocking separate.
+    # State blocking prevents escape commands during queue/duel/FFA without
+    # affecting normal lobby use of commands such as /spawn.
     start = text.index("    @EventHandler")
     method_start = text.index("    public void onCommand(", start)
     body_end = text.index("\n    }", method_start) + len("\n    }")
     new_method = '''    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
-        if (!this.plugin.getConfig().getBoolean("command-blocking.enabled", false)) return;
+        String root = normalizeCommandRoot(event.getMessage());
+        if (root.isEmpty()) return;
 
-        String raw = event.getMessage();
-        if (raw == null) return;
-        raw = raw.trim();
-        if (raw.startsWith("/")) raw = raw.substring(1);
-        if (raw.isEmpty()) return;
-
-        String root = raw.split("\\\\s+", 2)[0].toLowerCase(Locale.ROOT);
-        String unnamespaced = root;
-        int colon = root.indexOf(':');
-        if (colon >= 0 && colon + 1 < root.length()) unnamespaced = root.substring(colon + 1);
-
-        Set<String> blocked = new HashSet<>();
-        List<String> configured = this.plugin.getConfig().getStringList("command-blocking.commands");
-        if (configured.isEmpty()) configured = this.plugin.getConfig().getStringList("command-blocker.commands");
-        for (String value : configured) {
-            if (value == null) continue;
-            value = value.trim().toLowerCase(Locale.ROOT);
-            while (value.startsWith("/")) value = value.substring(1);
-            if (value.isEmpty()) continue;
-            blocked.add(value);
-            int configuredColon = value.indexOf(':');
-            if (configuredColon >= 0 && configuredColon + 1 < value.length()) {
-                blocked.add(value.substring(configuredColon + 1));
-            }
+        if (this.plugin.getConfig().getBoolean("command-blocking.enabled", false)
+                && isConfiguredWorld(player)
+                && isConfiguredCommand(root)) {
+            event.setCancelled(true);
+            String message = this.plugin.getConfig().getString(
+                    "command-blocking.message", "&cYou cannot use that command in this world.");
+            player.sendMessage(message.replace('&', '\\u00a7'));
+            return;
         }
-        if (!blocked.contains(root) && !blocked.contains(unnamespaced)) return;
 
-        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
-        if (worlds.isEmpty()) worlds = this.plugin.getConfig().getStringList("command-blocker.worlds");
-        boolean configuredWorld = worlds.stream().anyMatch(w -> w != null && w.trim().equalsIgnoreCase(player.getWorld().getName()));
-        boolean lobbyWorld = this.plugin.getLobbyManager() != null && this.plugin.getLobbyManager().isInLobbyWorld(player);
+        if (!this.plugin.getConfig().getBoolean("state-command-blocking.enabled", true)) return;
 
-        boolean inDuel = this.plugin.getDuelManager() != null
-                && this.plugin.getDuelManager().isInMatch(player.getUniqueId());
-        boolean spectating = this.plugin.getDuelManager() != null
-                && this.plugin.getDuelManager().isSpectating(player.getUniqueId());
-        boolean inFFA = this.plugin.getFFAManager() != null
-                && this.plugin.getFFAManager().isInFFA(player.getUniqueId());
-        boolean blockInMatches = this.plugin.getConfig().getBoolean("command-blocking.block-in-matches", true);
+        String state = getBlockedState(player);
+        if (state == null) return;
 
-        if (!configuredWorld && !lobbyWorld && !(blockInMatches && (inDuel || spectating || inFFA))) return;
+        String path = "state-command-blocking." + state;
+        if (!this.plugin.getConfig().getBoolean(path + ".enabled", true)) return;
+
+        List<String> configured = this.plugin.getConfig().getStringList(path + ".commands");
+        if (configured.isEmpty() && "spawn".equals(root)) {
+            configured = List.of("spawn");
+        }
+
+        if (!containsCommand(configured, root)) return;
 
         event.setCancelled(true);
         String message = this.plugin.getConfig().getString(
-                "command-blocking.message", "&cYou cannot use that command here.");
+                "state-command-blocking.message",
+                "&cYou cannot use that command while you are in a match or queue.");
         player.sendMessage(message.replace('&', '\\u00a7'));
+        this.plugin.debug("Blocked state command /" + root + " from " + player.getName()
+                + " (state=" + state + ")");
+    }
+
+    private String getBlockedState(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (this.plugin.getQueueManager() != null && this.plugin.getQueueManager().isInQueue(uuid)) return "queue";
+        if (this.plugin.getDuelManager() != null && this.plugin.getDuelManager().isInMatch(uuid)) return "duel";
+        if (this.plugin.getFFAManager() != null && this.plugin.getFFAManager().isInFFA(uuid)) return "ffa";
+        if (this.plugin.getDuelManager() != null && this.plugin.getDuelManager().isSpectating(uuid)) return "spectating";
+        return null;
+    }
+
+    private boolean isConfiguredWorld(Player player) {
+        List<String> worlds = this.plugin.getConfig().getStringList("command-blocking.worlds");
+        if (worlds.isEmpty()) worlds = this.plugin.getConfig().getStringList("command-blocker.worlds");
+        return worlds.stream().anyMatch(w -> w != null && w.trim().equalsIgnoreCase(player.getWorld().getName()));
+    }
+
+    private boolean isConfiguredCommand(String root) {
+        List<String> configured = this.plugin.getConfig().getStringList("command-blocking.commands");
+        if (configured.isEmpty()) configured = this.plugin.getConfig().getStringList("command-blocker.commands");
+        return containsCommand(configured, root);
+    }
+
+    private boolean containsCommand(List<String> configured, String root) {
+        Set<String> blocked = new HashSet<>();
+        for (String value : configured) {
+            if (value == null) continue;
+            value = normalizeCommandRoot(value);
+            if (!value.isEmpty()) blocked.add(value);
+        }
+        return blocked.contains(root);
+    }
+
+    private String normalizeCommandRoot(String command) {
+        String value = command == null ? "" : command.trim().toLowerCase(Locale.ROOT);
+        while (value.startsWith("/")) value = value.substring(1);
+        if (value.isEmpty()) return "";
+        int space = value.indexOf(' ');
+        if (space >= 0) value = value.substring(0, space);
+        int colon = value.indexOf(':');
+        if (colon >= 0 && colon + 1 < value.length()) value = value.substring(colon + 1);
+        return value;
     }'''
     return text[:method_start] + new_method + text[body_end:]
-
 
 def patch_listener_registration(text):
     marker = '        pm.registerEvents((Listener)new GUIListener(), (Plugin)this);'
