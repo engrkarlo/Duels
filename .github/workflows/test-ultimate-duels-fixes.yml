@@ -22,6 +22,24 @@ jobs:
         run: |
           python3 -u scripts/apply_source_fixes.py
 
+      - name: Apply patch repairs
+        run: python3 -u scripts/repair_patch_sources.py
+
+      - name: Apply runtime bugfixes
+        run: python3 -u scripts/apply_runtime_bugfixes.py
+
+      - name: Apply follow-up fixes
+        run: python3 -u scripts/apply_followup_fixes_v2.py
+
+      - name: Apply match/command/item fixes
+        run: python3 -u scripts/apply_match_command_item_fixes_v3.py
+
+      - name: Apply final match repairs
+        run: python3 -u scripts/repair_final_match_fixes.py
+
+      - name: Apply final bugfixes
+        run: python3 -u scripts/apply_final_bugfixes_v7.py
+
       - name: Validate source fixes
         run: |
           test -f com/ultimateduels/listeners/CommandBlockListener.java
