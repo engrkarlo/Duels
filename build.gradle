@@ -36,8 +36,7 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDirs = ['.']
-            exclude 'build/**', '.gradle/**', 'src/**'
+            srcDirs = ['com/ultimateduels']
         }
         resources {
             srcDirs = ['src/main/resources']
