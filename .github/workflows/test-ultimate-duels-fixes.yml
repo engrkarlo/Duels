@@ -110,3 +110,5 @@ jobs:
           path: build/libs/UltimateDuels-7.2.0-26.2-Fixes.jar
           if-no-files-found: error
           retention-days: 14
+
+# artifact trigger after vendor restore
